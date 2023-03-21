@@ -7,13 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Blackbird.Applications.Sdk.Common" Version="1.1.3" />
     <PackageReference Include="Dropbox.Api" Version="6.37.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Blackbird.Applications.Sdk.Common">
-      <HintPath>..\..\Applications_SDK\Applications_SDK\Blackbird.Applications.Sdk.Common\bin\Debug\net6.0\Blackbird.Applications.Sdk.Common.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>

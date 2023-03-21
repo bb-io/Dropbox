@@ -10,7 +10,7 @@ using System.Net.Http;
 using static Dropbox.Api.Files.SearchMatchTypeV2;
 using System.Text;
 
-namespace Apps.Zendesk.Actions
+namespace Apps.Dropbox.Actions
 {
     [ActionList]
     public class Actions

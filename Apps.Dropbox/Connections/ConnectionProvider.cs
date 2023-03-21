@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Apps.Slack.Connections
+namespace Apps.Dropbox.Connections
 {
     public class ConnectionProvider : IConnectionProvider
     {
