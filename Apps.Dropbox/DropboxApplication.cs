@@ -13,5 +13,10 @@ namespace Apps.Dropbox
             get => "Dropbox Application";
             set { }
         }
+
+        public T GetInstance<T>()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
