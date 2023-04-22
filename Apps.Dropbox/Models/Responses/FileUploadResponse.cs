@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace Apps.Dropbox.Models.Responses
 {
-    public class BaseResponse
+    public class FileUploadResponse
     {
-        public int StatusCode { get; set; }
-
-        public string Details { get; set; }
+        public string Id { get; set; }
     }
 }
