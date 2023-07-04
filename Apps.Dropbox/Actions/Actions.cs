@@ -25,7 +25,7 @@ namespace Apps.Dropbox.Actions
             {
                 foldersNames += item.Name + ", ";
             }
-            return new FoldersResponse()
+            return new FoldersResponse
             {
                 FolderNames = foldersNames
             };
@@ -43,7 +43,7 @@ namespace Apps.Dropbox.Actions
             {
                 filesNames += item.Name + ", ";
             }
-            return new FilesResponse()
+            return new FilesResponse
             {
                 FileNames = filesNames
             };
@@ -59,7 +59,7 @@ namespace Apps.Dropbox.Actions
             var result = await dropBoxClient.Files.CreateFolderV2Async(folderArg);
 
 
-            return new CreateFolderResponse()
+            return new CreateFolderResponse
             {
                 FolderPath = result.Metadata.PathDisplay
             };
@@ -75,7 +75,7 @@ namespace Apps.Dropbox.Actions
             {
                 var response = await dropBoxClient.Files.UploadAsync($"{input.Path.TrimEnd('/')}/{input.Filename}.{input.FileType}", WriteMode.Overwrite.Instance, body: stream);
 
-                return new FileUploadResponse()
+                return new FileUploadResponse
                 {
                     Id = response.Id
                 };
@@ -92,7 +92,7 @@ namespace Apps.Dropbox.Actions
             var result = await dropBoxClient.Files.DeleteV2Async(objectArg);
 
 
-            return new DeleteResponse()
+            return new DeleteResponse
             {
                 DeletedObjectPath = result.Metadata.PathDisplay
             };
@@ -107,7 +107,7 @@ namespace Apps.Dropbox.Actions
             var moveArg = new RelocationArg($"{input.PathFrom.TrimEnd('/')}/{input.SourceFileName}", $"{input.PathTo.TrimEnd('/')}/{input.TargetFileName}");
             var result = await dropBoxClient.Files.MoveV2Async(moveArg);
 
-            return new MoveFileResponse()
+            return new MoveFileResponse
             {
                 FileName = result.Metadata.Name,
                 NewFilePath = result.Metadata.PathDisplay
@@ -123,7 +123,7 @@ namespace Apps.Dropbox.Actions
             var copyArg = new RelocationArg($"{input.PathFrom.TrimEnd('/')}/{input.SourceFileName}", $"{input.PathTo.TrimEnd('/')}/{input.TargetFileName}");
             var result = await dropBoxClient.Files.CopyV2Async(copyArg);
 
-            return new MoveFileResponse()
+            return new MoveFileResponse
             {
                 FileName = result.Metadata.Name,
                 NewFilePath = result.Metadata.PathDisplay
@@ -140,7 +140,7 @@ namespace Apps.Dropbox.Actions
             var result = await dropBoxClient.FileRequests.CreateAsync(createFileArg);
 
 
-            return new CreateFileRequestResponse()
+            return new CreateFileRequestResponse
             {
                 RequestUrl = result.Url,
                 Destination = result.Destination
@@ -182,7 +182,7 @@ namespace Apps.Dropbox.Actions
             var result = dropBoxClient.Files.GetTemporaryLinkAsync(getLinkArg).Result;
 
 
-            return new GetDownloadLinkResponse()
+            return new GetDownloadLinkResponse
             {
                 LinkForDownload = result.Link,
                 Path = result.Metadata.PathDisplay,
@@ -196,7 +196,7 @@ namespace Apps.Dropbox.Actions
             var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "accessToken").Value;
             var applicationName = authenticationCredentialsProviders.First(p => p.KeyName == "applicationName").Value;
 
-            var httpClient = new HttpClient()
+            var httpClient = new HttpClient
             {
                 Timeout = TimeSpan.FromMinutes(20)
             };
