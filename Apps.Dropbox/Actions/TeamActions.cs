@@ -23,10 +23,10 @@ public class TeamActions
 
         var members = membersResponse.Members
             .Select(x => new MemberResponse(x)).ToList();
-        
+
         if (!membersResponse.HasMore)
             return new(members);
-        
+
         var cursor = membersResponse.Cursor;
 
         do
@@ -39,7 +39,7 @@ public class TeamActions
 
         return new(members);
     }
-    
+
     [Action("List member devices", Description = "Lists all device sessions of a team's member")]
     public async Task<MemberDevicesResponse> ListMemberDevices(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
@@ -87,7 +87,7 @@ public class TeamActions
             Devices = devices.Select(x => new MemberDevicesResponse(x)).ToList()
         };
     }
-    
+
     [Action("List groups", Description = "Lists groups on a team")]
     public async Task<ListGroupsResponse> ListGroups(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
@@ -97,10 +97,10 @@ public class TeamActions
 
         var groups = groupsResponse.Groups
             .Select(x => new GroupResponse(x)).ToList();
-        
+
         if (!groupsResponse.HasMore)
             return new(groups);
-        
+
         var cursor = groupsResponse.Cursor;
 
         do
@@ -112,8 +112,8 @@ public class TeamActions
         } while (groupsResponse.HasMore);
 
         return new(groups);
-    }    
-    
+    }
+
     [Action("List namespaces", Description = "Lists all team-accessible namespaces.")]
     public async Task<ListNamespacesResponse> ListNamespaces(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
@@ -123,10 +123,10 @@ public class TeamActions
 
         var namespaces = nameSpacesResponse.Namespaces
             .Select(x => new NamespaceResponse(x)).ToList();
-        
+
         if (!nameSpacesResponse.HasMore)
             return new(namespaces);
-        
+
         var cursor = nameSpacesResponse.Cursor;
 
         do
@@ -152,6 +152,35 @@ public class TeamActions
         return new(response.LinkedApiApps.Select(x => new AppResponse(x)).ToList());
     }
     
+    [Action("List sharing allowlist", Description = "Lists Approve List entries for given team")]
+    public async Task<SharingAllowlist> ListSharingAllowlist(
+        IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
+    {
+        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+        var result = new SharingAllowlist();
+        
+        var response = await dropBoxClient.Team.SharingAllowlistListAsync();
+
+        result.Domains.AddRange(response.Domains);
+        result.Emails.AddRange(response.Emails);
+
+        if (!response.HasMore)
+            return result;
+
+        var cursor = response.Cursor;
+
+        do
+        {
+            response = await dropBoxClient.Team.SharingAllowlistListContinueAsync(cursor);
+            cursor = response.Cursor;
+            
+            result.Domains.AddRange(response.Domains);
+            result.Emails.AddRange(response.Emails);
+        } while (response.HasMore);
+
+        return result;
+    }
+
     #endregion
 
     #region Get
@@ -163,7 +192,7 @@ public class TeamActions
         var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
 
         var response = await dropBoxClient.Team.GetInfoAsync();
-        
+
         return new()
         {
             Name = response.Name,
@@ -172,6 +201,57 @@ public class TeamActions
             NumUsedLicenses = response.NumUsedLicenses,
             NumLicensedUsers = response.NumLicensedUsers
         };
+    }
+
+    [Action("Get group info", Description = "Retrieves information about a group")]
+    public async Task<GroupResponse> GetGroupInfo(
+        IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+        [ActionParameter] [Display("Group id")] string groupId)
+    {
+        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+
+        var response = await dropBoxClient.Team
+            .GroupsGetInfoAsync(new GroupsSelector.GroupIds(new[] { groupId }));
+
+        var group = response.First();
+
+        if (group.IsIdNotFound)
+            throw new Exception($"No group found with {groupId} id");
+
+        return new(group.AsGroupInfo.Value);
+    }
+
+    #endregion
+
+    #region Create
+
+    [Action("Create group", Description = "Creates a new, empty group")]
+    public async Task<GroupResponse> CreateGroup(
+        IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+        [ActionParameter] [Display("Group name")]
+        string name)
+    {
+        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+
+        var response = await dropBoxClient.Team.GroupsCreateAsync(name);
+
+        return new(response);
+    }
+
+    #endregion
+
+    #region Delete
+
+    [Action("Delete group", Description = "Deletes a group")]
+    public Task DeleteGroup(
+        IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+        [ActionParameter] [Display("Group id")]
+        string groupId)
+    {
+        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+
+        return dropBoxClient.Team
+            .GroupsDeleteAsync(new GroupSelector.GroupId(groupId));
     }
 
     #endregion
