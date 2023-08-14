@@ -2,7 +2,6 @@
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Apps.Dropbox.Models.Responses;
 using Apps.Dropbox.Models.Requests;
-using Dropbox.Api;
 using Dropbox.Api.Files;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Sharing;
@@ -17,14 +16,15 @@ namespace Apps.Dropbox.Actions
         public async Task<FoldersResponse> GetFoldersListByPath(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] FoldersRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-            
-            string foldersNames = "";
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var list = await dropBoxClient.Files.ListFolderAsync(input.Path);
+            var foldersNames = "";
+            
             foreach (var item in list.Entries.Where(i => i.IsFolder))
             {
                 foldersNames += item.Name + ", ";
             }
+            
             return new FoldersResponse
             {
                 FolderNames = foldersNames
@@ -35,14 +35,15 @@ namespace Apps.Dropbox.Actions
         public async Task<FilesResponse> GetFilesListByPath(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] FilesRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            string filesNames = "";
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var list = await dropBoxClient.Files.ListFolderAsync(input.Path);
+            var filesNames = "";
+            
             foreach (var item in list.Entries.Where(i => i.IsFile))
             {
                 filesNames += item.Name + ", ";
             }
+            
             return new FilesResponse
             {
                 FileNames = filesNames
@@ -53,11 +54,9 @@ namespace Apps.Dropbox.Actions
         public async Task<CreateFolderResponse> CreateFolder(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] CreateFolderRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var folderArg = new CreateFolderArg($"{input.Path.TrimEnd('/')}/{input.FolderName}");
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var folderArg = new CreateFolderArg($"{input.ParentFolderPath.TrimEnd('/')}/{input.FolderName}");
             var result = await dropBoxClient.Files.CreateFolderV2Async(folderArg);
-
 
             return new CreateFolderResponse
             {
@@ -69,11 +68,12 @@ namespace Apps.Dropbox.Actions
         public async Task<FileUploadResponse> UploadFile(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] UploadFileRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
 
             using (var stream = new MemoryStream(input.File)) 
             {
-                var response = await dropBoxClient.Files.UploadAsync($"{input.Path.TrimEnd('/')}/{input.Filename}.{input.FileType}", WriteMode.Overwrite.Instance, body: stream);
+                var response = await dropBoxClient.Files.UploadAsync($"{input.ParentFolderPath.TrimEnd('/')}/{input.Filename}", 
+                    WriteMode.Overwrite.Instance, body: stream);
 
                 return new FileUploadResponse
                 {
@@ -81,17 +81,29 @@ namespace Apps.Dropbox.Actions
                 };
             } 
         }
-
-        [Action("Delete", Description = "Delete specified folder or file")]
-        public async Task<DeleteResponse> DeleteFolder(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-            [ActionParameter] DeleteRequest input)
+        
+        [Action("Delete file", Description = "Delete specified file")]
+        public async Task<DeleteResponse> DeleteFile(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] DeleteFileRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var objectArg = new DeleteArg($"{input.Path.TrimEnd('/')}/{input.ObjectToDeleteName}");
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var objectArg = new DeleteArg(input.FilePath);
             var result = await dropBoxClient.Files.DeleteV2Async(objectArg);
+            
+            return new DeleteResponse
+            {
+                DeletedObjectPath = result.Metadata.PathDisplay
+            };
+        }
 
-
+        [Action("Delete folder", Description = "Delete specified folder")]
+        public async Task<DeleteResponse> DeleteFolder(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] DeleteFolderRequest input)
+        {
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var objectArg = new DeleteArg(input.FolderPath);
+            var result = await dropBoxClient.Files.DeleteV2Async(objectArg);
+            
             return new DeleteResponse
             {
                 DeletedObjectPath = result.Metadata.PathDisplay
@@ -102,9 +114,9 @@ namespace Apps.Dropbox.Actions
         public async Task<MoveFileResponse> MoveFile(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] MoveFileRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var moveArg = new RelocationArg($"{input.PathFrom.TrimEnd('/')}/{input.SourceFileName}", $"{input.PathTo.TrimEnd('/')}/{input.TargetFileName}");
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var filename = input.TargetFilename ?? input.CurrentFilePath.Split("/")[^1];
+            var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
             var result = await dropBoxClient.Files.MoveV2Async(moveArg);
 
             return new MoveFileResponse
@@ -118,9 +130,9 @@ namespace Apps.Dropbox.Actions
         public async Task<MoveFileResponse> CopyFile(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] MoveFileRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var copyArg = new RelocationArg($"{input.PathFrom.TrimEnd('/')}/{input.SourceFileName}", $"{input.PathTo.TrimEnd('/')}/{input.TargetFileName}");
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var filename = input.TargetFilename ?? input.CurrentFilePath.Split("/")[^1];
+            var copyArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
             var result = await dropBoxClient.Files.CopyV2Async(copyArg);
 
             return new MoveFileResponse
@@ -134,11 +146,9 @@ namespace Apps.Dropbox.Actions
         public async Task<CreateFileRequestResponse> CreateFileRequest(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] CreateFileRequestRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var createFileArg = new CreateFileRequestArgs(input.RequestTitle,input.Destination);
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var createFileArg = new CreateFileRequestArgs(input.RequestTitle, input.Destination);
             var result = await dropBoxClient.FileRequests.CreateAsync(createFileArg);
-
 
             return new CreateFileRequestResponse
             {
@@ -151,62 +161,40 @@ namespace Apps.Dropbox.Actions
         public void ShareFolder(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] ShareFolderRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var shareFolderArg = new ShareFolderArg($"{input.Path.TrimEnd('/')}");
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var shareFolderArg = new ShareFolderArg(input.FolderPath);
             dropBoxClient.Sharing.ShareFolderAsync(shareFolderArg);
         }
 
         [Action("Download file", Description = "Download specified file")]
-        public async Task<byte[]> DownloadFile(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-            [ActionParameter] DownlodFileRequest input)
+        public async Task<DownloadFileResponse> DownloadFile(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] DownloadFileRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var downloadArg = new DownloadArg($"{input.Path.TrimEnd('/')}/{input.FileName}");
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var downloadArg = new DownloadArg(input.FilePath);
+            
             using (var response = await dropBoxClient.Files.DownloadAsync(downloadArg))
             {
-                byte[] result = await response.GetContentAsByteArrayAsync();
-                return result;
+                var filename = response.Response.AsFile.Name;
+                byte[] file = await response.GetContentAsByteArrayAsync();
+                return new DownloadFileResponse { Filename = filename, File = file };
             }
-
         }
 
-        [Action("Get link for file download", Description = "Get temporray link for download of a file")]
+        [Action("Get link for file download", Description = "Get temporary link for download of a file")]
         public GetDownloadLinkResponse GetDownloadLink(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-            [ActionParameter] DownlodFileRequest input)
+            [ActionParameter] DownloadFileRequest input)
         {
-            var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders);
-
-            var getLinkArg = new GetTemporaryLinkArg($"{input.Path.TrimEnd('/')}/{input.FileName}");
+            var dropBoxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var getLinkArg = new GetTemporaryLinkArg(input.FilePath);
             var result = dropBoxClient.Files.GetTemporaryLinkAsync(getLinkArg).Result;
-
-
+            
             return new GetDownloadLinkResponse
             {
                 LinkForDownload = result.Link,
                 Path = result.Metadata.PathDisplay,
                 Size = result.Metadata.Size
             };
-
-        }
-
-        private DropboxClient CreateDropboxClient(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
-        {
-            var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "accessToken").Value;
-            var applicationName = authenticationCredentialsProviders.First(p => p.KeyName == "applicationName").Value;
-
-            var httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromMinutes(20)
-            };
-            var config = new DropboxClientConfig(applicationName)
-            {
-                HttpClient = httpClient
-            };
-
-            var client = new DropboxClient(accessToken, config);
-            return client;
         }
     }
 }

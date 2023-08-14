@@ -1,9 +1,11 @@
-﻿using Apps.Dropbox.Models.Responses.Team;
+﻿using Apps.Dropbox.DataSourceHandlers;
+using Apps.Dropbox.Models.Responses.Team;
 using Apps.Dropbox.Models.Responses.Team.List;
 using Apps.Dropbox.Models.Responses.Team.Sessions;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.Sdk.Common.Authentication;
+using Blackbird.Applications.Sdk.Common.Dynamic;
 using Dropbox.Api;
 using Dropbox.Api.Team;
 
@@ -18,11 +20,9 @@ public class TeamActions
     public async Task<ListMembersResponse> ListMembers(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var membersResponse = await dropBoxClient.Team.MembersListAsync();
-
-        var members = membersResponse.Members
-            .Select(x => new MemberResponse(x)).ToList();
+        var members = membersResponse.Members.Select(x => new MemberResponse(x)).ToList();
 
         if (!membersResponse.HasMore)
             return new(members);
@@ -32,7 +32,6 @@ public class TeamActions
         do
         {
             membersResponse = await dropBoxClient.Team.MembersListContinueAsync(cursor);
-
             cursor = membersResponse.Cursor;
             members.AddRange(membersResponse.Members.Select(x => new MemberResponse(x)));
         } while (membersResponse.HasMore);
@@ -43,10 +42,9 @@ public class TeamActions
     [Action("List member devices", Description = "Lists all device sessions of a team's member")]
     public async Task<MemberDevicesResponse> ListMemberDevices(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-        [ActionParameter] [Display("Team member id")]
-        string teamMemberId)
+        [ActionParameter] [Display("Team member id")] [DataSource(typeof(TeamMemberDataSourceHandler))] string teamMemberId)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var response = await dropBoxClient.Team.DevicesListMemberDevicesAsync(teamMemberId);
 
         return new()
@@ -68,8 +66,7 @@ public class TeamActions
     public async Task<TeamDevicesResponse> ListMembersDevices(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
-
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var devices = new List<MemberDevices>();
         ListMembersDevicesResult response;
         string? cursor = null;
@@ -77,7 +74,6 @@ public class TeamActions
         do
         {
             response = await dropBoxClient.Team.DevicesListMembersDevicesAsync(cursor);
-
             cursor = response.Cursor;
             devices.AddRange(response.Devices);
         } while (response.HasMore);
@@ -92,11 +88,9 @@ public class TeamActions
     public async Task<ListGroupsResponse> ListGroups(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var groupsResponse = await dropBoxClient.Team.GroupsListAsync();
-
-        var groups = groupsResponse.Groups
-            .Select(x => new GroupResponse(x)).ToList();
+        var groups = groupsResponse.Groups.Select(x => new GroupResponse(x)).ToList();
 
         if (!groupsResponse.HasMore)
             return new(groups);
@@ -106,7 +100,6 @@ public class TeamActions
         do
         {
             groupsResponse = await dropBoxClient.Team.GroupsListContinueAsync(cursor);
-
             cursor = groupsResponse.Cursor;
             groups.AddRange(groupsResponse.Groups.Select(x => new GroupResponse(x)));
         } while (groupsResponse.HasMore);
@@ -118,24 +111,21 @@ public class TeamActions
     public async Task<ListNamespacesResponse> ListNamespaces(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
-        var nameSpacesResponse = await dropBoxClient.Team.NamespacesListAsync();
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
+        var namespacesResponse = await dropBoxClient.Team.NamespacesListAsync();
+        var namespaces = namespacesResponse.Namespaces.Select(x => new NamespaceResponse(x)).ToList();
 
-        var namespaces = nameSpacesResponse.Namespaces
-            .Select(x => new NamespaceResponse(x)).ToList();
-
-        if (!nameSpacesResponse.HasMore)
+        if (!namespacesResponse.HasMore)
             return new(namespaces);
 
-        var cursor = nameSpacesResponse.Cursor;
+        var cursor = namespacesResponse.Cursor;
 
         do
         {
-            nameSpacesResponse = await dropBoxClient.Team.NamespacesListContinueAsync(cursor);
-
-            cursor = nameSpacesResponse.Cursor;
-            namespaces.AddRange(nameSpacesResponse.Namespaces.Select(x => new NamespaceResponse(x)));
-        } while (nameSpacesResponse.HasMore);
+            namespacesResponse = await dropBoxClient.Team.NamespacesListContinueAsync(cursor);
+            cursor = namespacesResponse.Cursor;
+            namespaces.AddRange(namespacesResponse.Namespaces.Select(x => new NamespaceResponse(x)));
+        } while (namespacesResponse.HasMore);
 
         return new(namespaces);
     }
@@ -143,12 +133,10 @@ public class TeamActions
     [Action("List member linked apps", Description = "Lists all linked applications of the team member")]
     public async Task<ListMemberLinkedAppsResponse> ListMemberLinkedApps(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-        [ActionParameter] [Display("Team member id")]
-        string teamMemberId)
+        [ActionParameter] [Display("Team member id")] [DataSource(typeof(TeamMemberDataSourceHandler))] string teamMemberId)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var response = await dropBoxClient.Team.LinkedAppsListMemberLinkedAppsAsync(teamMemberId);
-
         return new(response.LinkedApiApps.Select(x => new AppResponse(x)).ToList());
     }
     
@@ -156,11 +144,10 @@ public class TeamActions
     public async Task<SharingAllowlist> ListSharingAllowlist(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var result = new SharingAllowlist();
-        
         var response = await dropBoxClient.Team.SharingAllowlistListAsync();
-
+        
         result.Domains.AddRange(response.Domains);
         result.Emails.AddRange(response.Emails);
 
@@ -173,7 +160,6 @@ public class TeamActions
         {
             response = await dropBoxClient.Team.SharingAllowlistListContinueAsync(cursor);
             cursor = response.Cursor;
-            
             result.Domains.AddRange(response.Domains);
             result.Emails.AddRange(response.Emails);
         } while (response.HasMore);
@@ -189,8 +175,7 @@ public class TeamActions
     public async Task<TeamResponse> GetTeamInfo(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
-
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var response = await dropBoxClient.Team.GetInfoAsync();
 
         return new()
@@ -206,13 +191,10 @@ public class TeamActions
     [Action("Get group info", Description = "Retrieves information about a group")]
     public async Task<GroupResponse> GetGroupInfo(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-        [ActionParameter] [Display("Group id")] string groupId)
+        [ActionParameter] [Display("Group id")] [DataSource(typeof(GroupDataSourceHandler))] string groupId)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
-
-        var response = await dropBoxClient.Team
-            .GroupsGetInfoAsync(new GroupsSelector.GroupIds(new[] { groupId }));
-
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
+        var response = await dropBoxClient.Team.GroupsGetInfoAsync(new GroupsSelector.GroupIds(new[] { groupId }));
         var group = response.First();
 
         if (group.IsIdNotFound)
@@ -228,13 +210,10 @@ public class TeamActions
     [Action("Create group", Description = "Creates a new, empty group")]
     public async Task<GroupResponse> CreateGroup(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-        [ActionParameter] [Display("Group name")]
-        string name)
+        [ActionParameter] [Display("Group name")] string name)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
-
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
         var response = await dropBoxClient.Team.GroupsCreateAsync(name);
-
         return new(response);
     }
 
@@ -245,34 +224,10 @@ public class TeamActions
     [Action("Delete group", Description = "Deletes a group")]
     public Task DeleteGroup(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-        [ActionParameter] [Display("Group id")]
-        string groupId)
+        [ActionParameter] [Display("Group id")] [DataSource(typeof(GroupDataSourceHandler))] string groupId)
     {
-        var dropBoxClient = CreateDropboxClient(authenticationCredentialsProviders.ToArray());
-
-        return dropBoxClient.Team
-            .GroupsDeleteAsync(new GroupSelector.GroupId(groupId));
-    }
-
-    #endregion
-
-    #region Utils
-
-    private DropboxTeamClient CreateDropboxClient(
-        AuthenticationCredentialsProvider[] authenticationCredentialsProviders)
-    {
-        var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "accessToken").Value;
-        var applicationName = authenticationCredentialsProviders.First(p => p.KeyName == "applicationName").Value;
-
-        var config = new DropboxClientConfig(applicationName)
-        {
-            HttpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromMinutes(20)
-            }
-        };
-
-        return new DropboxTeamClient(accessToken, config);
+        var dropBoxClient = DropboxClientFactory.CreateDropboxTeamClient(authenticationCredentialsProviders);
+        return dropBoxClient.Team.GroupsDeleteAsync(new GroupSelector.GroupId(groupId));
     }
 
     #endregion

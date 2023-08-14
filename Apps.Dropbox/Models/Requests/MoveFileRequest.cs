@@ -1,13 +1,16 @@
-﻿namespace Apps.Dropbox.Models.Requests
+﻿using Apps.Dropbox.DataSourceHandlers;
+using Blackbird.Applications.Sdk.Common.Dynamic;
+
+namespace Apps.Dropbox.Models.Requests
 {
     public class MoveFileRequest
     {
-        public string PathFrom { get; set; }
+        [DataSource(typeof(FileDataSourceHandler))]
+        public string CurrentFilePath { get; set; }
 
-        public string SourceFileName { get; set; }
+        [DataSource(typeof(FolderDataSourceHandler))]
+        public string DestinationFolder { get; set; }
 
-        public string PathTo { get; set; }
-
-        public string TargetFileName { get; set; }
+        public string? TargetFilename { get; set; }
     }
 }
