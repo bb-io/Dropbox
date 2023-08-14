@@ -13,11 +13,15 @@ public class GroupResponse
         MemberCount = group.MemberCount;
     }
 
-    [Display("Member count")] public uint? MemberCount { get; init; }
-
-    [Display("External id")] public string ExternalId { get; init; }
-
-    public string Name { get; init; }
-
+    [Display("Group ID")]
     public string Id { get; init; }
+    
+    [Display("Member count")] 
+    public uint? MemberCount { get; init; }
+
+    [Display("External ID")] 
+    public string ExternalId { get; init; }
+
+    [Display("Group name")]
+    public string Name { get; init; }
 }

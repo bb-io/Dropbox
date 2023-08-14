@@ -18,11 +18,15 @@ public class MemberDevicesResponse
         MobileClientSessions = memberDevices.MobileClients.Select(x => new MobileSessionResponse(x)).ToArray();
     }
 
-    [Display("Team member id")] public string TeamMemberId { get; init; }
+    [Display("Team member ID")] 
+    public string TeamMemberId { get; init; }
 
-    [Display("Active web sessions")] public ActiveSessionResponse[] ActiveWebSessions { get; init; }
+    [Display("Active web sessions")] 
+    public ActiveSessionResponse[] ActiveWebSessions { get; init; }
 
-    [Display("Desktop client sessions")] public DesktopSessionResponse[] DesktopClientSessions { get; init; }
+    [Display("Desktop client sessions")] 
+    public DesktopSessionResponse[] DesktopClientSessions { get; init; }
 
-    [Display("Mobile client sessions")] public MobileSessionResponse[] MobileClientSessions { get; init; }
+    [Display("Mobile client sessions")] 
+    public MobileSessionResponse[] MobileClientSessions { get; init; }
 }

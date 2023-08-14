@@ -14,7 +14,9 @@ public class DeviceSessionResponse
 
     public DateTime? Created { get; set; }
 
-    [Display("Ip address")] public string IpAddress { get; set; }
+    [Display("IP address")] 
+    public string IpAddress { get; set; }
 
-    [Display("Session id")] public string SessionId { get; set; }
+    [Display("Session ID")] 
+    public string SessionId { get; set; }
 }

@@ -14,22 +14,22 @@ namespace Apps.Dropbox.Connections
                 ConnectionUsage = ConnectionUsage.Actions,
                 ConnectionProperties = new List<ConnectionProperty>
                 {
-                    new ConnectionProperty("accessToken"),
-                    new ConnectionProperty("applicationName")
+                    new ConnectionProperty("Access token"),
+                    new ConnectionProperty("Application name")
                 }
             }
         };
 
         public IEnumerable<AuthenticationCredentialsProvider> CreateAuthorizationCredentialsProviders(Dictionary<string, string> values)
         {
-            var accessToken = values.First(v => v.Key == "accessToken");
+            var accessToken = values.First(v => v.Key == "Access token");
             yield return new AuthenticationCredentialsProvider(
                 AuthenticationCredentialsRequestLocation.None,
                 accessToken.Key,
                 accessToken.Value
             );
 
-            var applicationName = values.First(v => v.Key == "applicationName");
+            var applicationName = values.First(v => v.Key == "Application name");
             yield return new AuthenticationCredentialsProvider(
                 AuthenticationCredentialsRequestLocation.None,
                 applicationName.Key,

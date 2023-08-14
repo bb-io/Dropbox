@@ -13,9 +13,12 @@ public class MobileSessionResponse : DeviceSessionResponse
         OsVersion = session.OsVersion;
     }
 
-    [Display("Client version")] public string ClientVersion { get; set; }
+    [Display("Client version")] 
+    public string ClientVersion { get; set; }
 
-    [Display("Os version")] public string OsVersion { get; set; }
+    [Display("OS version")] 
+    public string OsVersion { get; set; }
 
-    [Display("Device name")] public string DeviceName { get; set; }
+    [Display("Device name")] 
+    public string DeviceName { get; set; }
 }

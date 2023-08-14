@@ -20,7 +20,8 @@ public class MemberResponse
 
     public string Email { get; set; }
 
-    [Display("Member folder id")] public string MemberFolderId { get; set; }
+    [Display("Member folder ID")] 
+    public string MemberFolderId { get; set; }
 
     public IList<string> Groups { get; set; }
 }

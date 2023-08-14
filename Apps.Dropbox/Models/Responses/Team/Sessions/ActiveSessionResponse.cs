@@ -13,9 +13,11 @@ public class ActiveSessionResponse : DeviceSessionResponse
         UserAgent = session.UserAgent;
     }
 
+    [Display("OS")]
     public string Os { get; set; }
 
     public string Browser { get; set; }
 
-    [Display("User agent")] public string UserAgent { get; set; }
+    [Display("User agent")] 
+    public string UserAgent { get; set; }
 }

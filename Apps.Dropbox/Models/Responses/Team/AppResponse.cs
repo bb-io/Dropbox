@@ -13,8 +13,14 @@ public class AppResponse
         Publisher = app.Publisher;
     }
 
+    [Display("App ID")]
     public string Id { get; set; }
+    
     public string Publisher { get; set; }
-    [Display("Is app folder?")]public bool IsAppFolder { get; set; }
+    
+    [Display("Is app folder?")]
+    public bool IsAppFolder { get; set; }
+    
+    [Display("App name")]
     public string Name { get; set; }
 }

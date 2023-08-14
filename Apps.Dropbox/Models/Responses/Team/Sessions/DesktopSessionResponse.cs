@@ -15,7 +15,9 @@ public class DesktopSessionResponse : DeviceSessionResponse
 
     public string Platform { get; set; }
 
-    [Display("Client version")] public string ClientVersion { get; set; }
+    [Display("Client version")] 
+    public string ClientVersion { get; set; }
 
-    [Display("Host name")] public string HostName { get; set; }
+    [Display("Host name")] 
+    public string HostName { get; set; }
 }

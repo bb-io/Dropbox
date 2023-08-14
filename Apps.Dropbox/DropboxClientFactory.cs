@@ -8,8 +8,8 @@ public static class DropboxClientFactory
     public static DropboxClient CreateDropboxClient(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "accessToken").Value;
-        var applicationName = authenticationCredentialsProviders.First(p => p.KeyName == "applicationName").Value;
+        var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "Access token").Value;
+        var applicationName = authenticationCredentialsProviders.First(p => p.KeyName == "Application name").Value;
         var config = GetConfig(applicationName);
         return new DropboxClient(accessToken, config);
     }
@@ -17,8 +17,8 @@ public static class DropboxClientFactory
     public static DropboxTeamClient CreateDropboxTeamClient(
         IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
     {
-        var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "accessToken").Value;
-        var applicationName = authenticationCredentialsProviders.First(p => p.KeyName == "applicationName").Value;
+        var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "Access token").Value;
+        var applicationName = authenticationCredentialsProviders.First(p => p.KeyName == "Application name").Value;
         var config = GetConfig(applicationName);
         return new DropboxTeamClient(accessToken, config);
     }
