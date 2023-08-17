@@ -9,31 +9,21 @@ namespace Apps.Dropbox.Connections
         {
             new ConnectionPropertyGroup
             {
-                Name = "Developer API token",
-                AuthenticationType = ConnectionAuthenticationType.Undefined,
+                Name = "OAuth",
+                AuthenticationType = ConnectionAuthenticationType.OAuth2,
                 ConnectionUsage = ConnectionUsage.Actions,
-                ConnectionProperties = new List<ConnectionProperty>
-                {
-                    new ConnectionProperty("Access token"),
-                    new ConnectionProperty("Application name")
-                }
+                ConnectionProperties = new List<ConnectionProperty>()
             }
         };
 
-        public IEnumerable<AuthenticationCredentialsProvider> CreateAuthorizationCredentialsProviders(Dictionary<string, string> values)
+        public IEnumerable<AuthenticationCredentialsProvider> CreateAuthorizationCredentialsProviders(
+            Dictionary<string, string> values)
         {
-            var accessToken = values.First(v => v.Key == "Access token");
+            var accessToken = values.First(v => v.Key == "access_token");
             yield return new AuthenticationCredentialsProvider(
                 AuthenticationCredentialsRequestLocation.None,
-                accessToken.Key,
+                "Access token",
                 accessToken.Value
-            );
-
-            var applicationName = values.First(v => v.Key == "Application name");
-            yield return new AuthenticationCredentialsProvider(
-                AuthenticationCredentialsRequestLocation.None,
-                applicationName.Key,
-                applicationName.Value
             );
         }
     }
