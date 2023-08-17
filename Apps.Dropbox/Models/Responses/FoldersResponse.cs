@@ -1,10 +1,9 @@
-﻿using Blackbird.Applications.Sdk.Common;
+﻿using Apps.Dropbox.Dtos;
 
 namespace Apps.Dropbox.Models.Responses
 {
     public class FoldersResponse
     {
-        [Display("Folder names")]
-        public string FolderNames { get; set; }
+        public IEnumerable<FolderDto> Folders { get; set; }
     }
 }

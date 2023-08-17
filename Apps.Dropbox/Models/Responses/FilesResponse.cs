@@ -1,10 +1,9 @@
-﻿using Blackbird.Applications.Sdk.Common;
+﻿using Apps.Dropbox.Dtos;
 
 namespace Apps.Dropbox.Models.Responses
 {
     public class FilesResponse
     {
-        [Display("Filenames")]
-        public string FileNames { get; set; }
+        public IEnumerable<FileDto> Files { get; set; }
     }
 }

@@ -9,6 +9,7 @@ namespace Apps.Dropbox.Models.Responses
 
         public string Path { get; set; }
 
-        public ulong Size { get; set; }
+        [Display("Size in bytes")]
+        public ulong SizeInBytes { get; set; }
     }
 }
