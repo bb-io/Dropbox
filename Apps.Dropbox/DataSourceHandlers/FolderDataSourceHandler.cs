@@ -39,6 +39,7 @@ public class FolderDataSourceHandler : BaseInvocable, IAsyncDataSourceHandler
             }
         }
 
+        folderDictionary.Add("/", "/");
         return folderDictionary;
     }
 
