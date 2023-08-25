@@ -1,6 +1,7 @@
 ﻿using Apps.Dropbox.DataSourceHandlers;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Dynamic;
+using File = Blackbird.Applications.Sdk.Common.Files.File;
 
 namespace Apps.Dropbox.Models.Requests
 {
@@ -10,8 +11,6 @@ namespace Apps.Dropbox.Models.Requests
         [DataSource(typeof(FolderDataSourceHandler))]
         public string ParentFolderPath { get; set; }
 
-        public string Filename { get; set; }
-
-        public byte[] File { get; set; }
+        public File File { get; set; }
     }
 }

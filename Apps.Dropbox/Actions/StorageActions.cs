@@ -7,6 +7,7 @@ using Dropbox.Api.Files;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Sharing;
 using Blackbird.Applications.Sdk.Common.Actions;
+using File = Blackbird.Applications.Sdk.Common.Files.File;
 
 namespace Apps.Dropbox.Actions
 {
@@ -53,10 +54,10 @@ namespace Apps.Dropbox.Actions
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             
-            using (var stream = new MemoryStream(input.File))
+            using (var stream = new MemoryStream(input.File.Bytes))
             {
                 var response = await dropboxClient.Files.UploadAsync(
-                    $"{input.ParentFolderPath.TrimEnd('/')}/{input.Filename}", 
+                    $"{input.ParentFolderPath.TrimEnd('/')}/{input.File.Name}", 
                     WriteMode.Overwrite.Instance, body: stream);
                 return new FileDto(response);
             } 
@@ -155,8 +156,19 @@ namespace Apps.Dropbox.Actions
             using (var response = await dropboxClient.Files.DownloadAsync(downloadArg))
             {
                 var filename = response.Response.AsFile.Name;
+                
+                if (!MimeTypes.TryGetMimeType(filename, out var contentType))
+                    contentType = "application/octet-stream";
+                
                 byte[] file = await response.GetContentAsByteArrayAsync();
-                return new DownloadFileResponse { Filename = filename, File = file };
+                return new DownloadFileResponse 
+                { 
+                    File = new File(file)
+                    {
+                        Name = filename,
+                        ContentType = contentType
+                    } 
+                };
             }
         }
 
