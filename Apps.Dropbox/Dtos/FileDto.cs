@@ -3,17 +3,13 @@ using Dropbox.Api.Files;
 
 namespace Apps.Dropbox.Dtos;
 
-public class FileDto
+public class FileDto : ItemDto
 {
-    public FileDto(FileMetadata file)
+    public FileDto(FileMetadata file) : base(file)
     {
-        FilePath = file.PathDisplay;
         SizeInBytes = file.Size;
     }
 
-    [Display("File path")]
-    public string FilePath { get; set; }
-    
     [Display("Size in bytes")]
     public ulong SizeInBytes { get; set; }
 }

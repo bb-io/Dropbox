@@ -1,15 +1,8 @@
-﻿using Blackbird.Applications.Sdk.Common;
-using Dropbox.Api.Files;
+﻿using Dropbox.Api.Files;
 
 namespace Apps.Dropbox.Dtos;
 
-public class FolderDto
+public class FolderDto : ItemDto
 {
-    public FolderDto(FolderMetadata folder)
-    {
-        FolderPath = folder.PathDisplay;
-    }
-
-    [Display("Folder path")]
-    public string FolderPath { get; set; }
+    public FolderDto(FolderMetadata folder) : base(folder) { }
 }
