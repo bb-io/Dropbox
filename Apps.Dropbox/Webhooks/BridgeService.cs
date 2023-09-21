@@ -1,80 +1,69 @@
 ﻿using System.Net;
 using Apps.Dropbox.Webhooks.Payload;
-using Blackbird.Applications.Sdk.Common.Authentication;
-using Dropbox.Api;
 using RestSharp;
 
 namespace Apps.Dropbox.Webhooks;
 
 public class BridgeService
 {
-    private const string SubscriptionEvent = "item_updated";
+    private const string AppName = ApplicationConstants.AppName;
+    
+    private readonly RestClient _bridgeClient;
 
-    private readonly string _accountId;
-    private readonly DropboxClient _dropboxClient;
-
-    public BridgeService(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
+    public BridgeService()
     {
-        _dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-        var currentAccount = _dropboxClient.Users.GetCurrentAccountAsync().Result;
-        
-        if (currentAccount == null) 
-            throw new Exception("Could not fetch account details.");
-        
-        _accountId = currentAccount.AccountId;
+        _bridgeClient = new RestClient(new RestClientOptions(ApplicationConstants.BridgeServiceUrl));
+    }
+
+    public async Task Subscribe(string url, string id, string subscriptionEvent)
+    {
+        var bridgeSubscriptionRequest = CreateBridgeRequest($"/webhooks/{AppName}/{id}/{subscriptionEvent}", Method.Post);
+        bridgeSubscriptionRequest.AddBody(url);
+        await _bridgeClient.ExecuteAsync(bridgeSubscriptionRequest);
     }
     
-    public async Task Subscribe(string url)
+    public async Task<int> Unsubscribe(string url, string id, string subscriptionEvent)
     {
-        var client = new RestClient(ApplicationConstants.BridgeServiceUrl);
-        var subscribeRequest = new RestRequest($"/webhooks/{ApplicationConstants.AppName}/{_accountId}/{SubscriptionEvent}", 
-            Method.Post);
-        subscribeRequest.AddHeader("Blackbird-Token", ApplicationConstants.BlackbirdToken);
-        subscribeRequest.AddBody(url);
-        await client.ExecuteAsync(subscribeRequest);
-        
-        var getCursorRequest = new RestRequest($"/storage/{ApplicationConstants.AppName}/{_accountId}_cursor");
-        getCursorRequest.AddHeader("Blackbird-Token", ApplicationConstants.BlackbirdToken);
-        var getCursorResponse = await client.ExecuteAsync(getCursorRequest);
+        var getTriggerRequest = CreateBridgeRequest($"/webhooks/{AppName}/{id}/{subscriptionEvent}", Method.Get);
+        var webhooks = await _bridgeClient.GetAsync<List<BridgeGetResponse>>(getTriggerRequest);
+        var webhook = webhooks.FirstOrDefault(w => w.Value == url);
 
-        if (getCursorResponse.StatusCode == HttpStatusCode.NotFound) // Update cursor only if it doesn't exist for this account
-        {
-            var listFolderResult = await _dropboxClient.Files.ListFolderAsync("", recursive: true);
-            var cursor = listFolderResult.Cursor;
+        var deleteTriggerRequest = CreateBridgeRequest($"/webhooks/{AppName}/{id}/{subscriptionEvent}/{webhook.Id}", 
+            Method.Delete);
+        await _bridgeClient.ExecuteAsync(deleteTriggerRequest);
 
-            while (listFolderResult.HasMore)
-            {
-                listFolderResult = await _dropboxClient.Files.ListFolderContinueAsync(cursor);
-                cursor = listFolderResult.Cursor;
-            }
-
-            var storeCursorRequest = new RestRequest($"/storage/{ApplicationConstants.AppName}/{_accountId}_cursor",
-                Method.Post);
-            storeCursorRequest.AddHeader("Blackbird-Token", ApplicationConstants.BlackbirdToken);
-            storeCursorRequest.AddBody(cursor);
-            await client.ExecuteAsync(storeCursorRequest);
-        }
+        var webhooksLeft = webhooks.Count - 1;
+        return webhooksLeft;
     }
 
-    public async Task Unsubscribe(string url)
+    public async Task StoreValue(string key, string value)
     {
-        var client = new RestClient(ApplicationConstants.BridgeServiceUrl);
-        var getTriggerRequest = new RestRequest($"/webhooks/{ApplicationConstants.AppName}/{_accountId}/{SubscriptionEvent}");
-        getTriggerRequest.AddHeader("Blackbird-Token", ApplicationConstants.BlackbirdToken);
-        var webhooks = await client.GetAsync<List<BridgeGetResponse>>(getTriggerRequest);
-        var webhook = webhooks.FirstOrDefault(w => w.Value == url);
-        
-        var deleteTriggerRequest = new RestRequest($"/webhooks/{ApplicationConstants.AppName}/{_accountId}/{SubscriptionEvent}/{webhook.Id}", 
-            Method.Delete);
-        deleteTriggerRequest.AddHeader("Blackbird-Token", ApplicationConstants.BlackbirdToken);
-        await client.ExecuteAsync(deleteTriggerRequest);
+        var storeValueRequest = CreateBridgeRequest($"/storage/{AppName}/{key}", Method.Post);
+        storeValueRequest.AddBody(value);
+        await _bridgeClient.ExecuteAsync(storeValueRequest);
+    }
+    
+    public async Task<string?> RetrieveValue(string key)
+    {
+        var deleteValueRequest = CreateBridgeRequest($"/storage/{AppName}/{key}", Method.Get);
+        var result = await _bridgeClient.ExecuteAsync(deleteValueRequest);
 
-        if (webhooks.Count == 1) // All webhooks for specified accountId rely on a single cursor
-        {                        // That's why cursor can be deleted only if there are no events for the account left
-            var deleteCursorRequest = new RestRequest($"/storage/{ApplicationConstants.AppName}/{_accountId}_cursor", 
-                Method.Delete);
-            deleteCursorRequest.AddHeader("Blackbird-Token", ApplicationConstants.BlackbirdToken);
-            await client.ExecuteAsync(deleteCursorRequest);
-        }
+        if (result.StatusCode == HttpStatusCode.NotFound)
+            return null;
+        
+        return result.Content;
+    }
+    
+    public async Task DeleteValue(string key)
+    {
+        var deleteValueRequest = CreateBridgeRequest($"/storage/{AppName}/{key}", Method.Delete);
+        await _bridgeClient.ExecuteAsync(deleteValueRequest);
+    }
+
+    private RestRequest CreateBridgeRequest(string endpoint, Method method)
+    {
+        var request = new RestRequest(endpoint, method);
+        request.AddHeader("Blackbird-Token", ApplicationConstants.BlackbirdToken);
+        return request;
     }
 }
