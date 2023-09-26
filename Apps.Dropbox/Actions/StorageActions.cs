@@ -1,4 +1,5 @@
-﻿using Apps.Dropbox.Dtos;
+﻿using System.Net.Mime;
+using Apps.Dropbox.Dtos;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Apps.Dropbox.Models.Responses;
@@ -157,16 +158,13 @@ namespace Apps.Dropbox.Actions
             {
                 var filename = response.Response.AsFile.Name;
                 
-                if (!MimeTypes.TryGetMimeType(filename, out var contentType))
-                    contentType = "application/octet-stream";
-                
                 byte[] file = await response.GetContentAsByteArrayAsync();
                 return new DownloadFileResponse 
                 { 
                     File = new File(file)
                     {
                         Name = filename,
-                        ContentType = contentType
+                        ContentType = MediaTypeNames.Application.Octet
                     } 
                 };
             }
