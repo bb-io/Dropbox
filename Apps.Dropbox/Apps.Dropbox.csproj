@@ -4,7 +4,7 @@
         <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <Product>Blackbird Dropbox</Product>
+        <Product>Dropbox</Product>
         <Description>The cloud storage for files</Description>
         <Version>1.0.0</Version>
         <AssemblyName>Apps.Dropbox</AssemblyName>
@@ -21,4 +21,7 @@
         <PackageReference Include="RestSharp" Version="110.2.0"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png"/>
+    </ItemGroup>
 </Project>
