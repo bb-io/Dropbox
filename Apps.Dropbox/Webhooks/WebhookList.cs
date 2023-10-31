@@ -136,7 +136,7 @@ public class WebhookList : BaseInvocable
 
     private async Task StoreCursor(string oldCursor, string newCursor)
     {
-        var bridgeService = new BridgeService();
+        var bridgeService = new BridgeService(InvocationContext.UriInfo.BridgeServiceUrl.ToString());
         
         lock (LockObject)
         {

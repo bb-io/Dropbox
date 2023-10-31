@@ -29,7 +29,7 @@ public class WebhookHandler : BaseInvocable, IWebhookEventHandler
     public async Task SubscribeAsync(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders, 
         Dictionary<string, string> values)
     {
-        var bridgeService = new BridgeService();
+        var bridgeService = new BridgeService(InvocationContext.UriInfo.BridgeServiceUrl.ToString());
         await bridgeService.Subscribe(values["payloadUrl"], _accountId, SubscriptionEvent);
         
         var cursor = await bridgeService.RetrieveValue(_cursorStorageKey);
@@ -52,7 +52,7 @@ public class WebhookHandler : BaseInvocable, IWebhookEventHandler
     public async Task UnsubscribeAsync(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders, 
         Dictionary<string, string> values)
     {
-        var bridgeService = new BridgeService();
+        var bridgeService = new BridgeService(InvocationContext.UriInfo.BridgeServiceUrl.ToString());
         var webhooksLeft = await bridgeService.Unsubscribe(values["payloadUrl"], _accountId, SubscriptionEvent);
     
         if (webhooksLeft == 0) // All webhooks for specified accountId rely on a single cursor. That's why cursor can be deleted only if there are no events for the account left
