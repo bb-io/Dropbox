@@ -8,13 +8,21 @@ using Dropbox.Api.Files;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Sharing;
 using Blackbird.Applications.Sdk.Common.Actions;
-using File = Blackbird.Applications.Sdk.Common.Files.File;
+using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 
 namespace Apps.Dropbox.Actions
 {
     [ActionList]
     public class StorageActions
     {
+        private readonly IFileManagementClient _fileManagementClient;
+
+        public StorageActions(IFileManagementClient fileManagementClient)
+        {
+            _fileManagementClient = fileManagementClient;
+        }
+        
         [Action("Get folders list by path", Description = "Get folders list by specified path")]
         public async Task<FoldersResponse> GetFoldersListByPath(
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
@@ -54,8 +62,10 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] UploadFileRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+            var file = await _fileManagementClient.DownloadAsync(input.File);
+            var fileBytes = await file.GetByteData();
             
-            using (var stream = new MemoryStream(input.File.Bytes))
+            using (var stream = new MemoryStream(fileBytes))
             {
                 var response = await dropboxClient.Files.UploadAsync(
                     $"{input.ParentFolderPath.TrimEnd('/')}/{input.File.Name}", 
@@ -154,20 +164,11 @@ namespace Apps.Dropbox.Actions
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var downloadArg = new DownloadArg(input.FilePath);
             
-            using (var response = await dropboxClient.Files.DownloadAsync(downloadArg))
-            {
-                var filename = response.Response.AsFile.Name;
-                
-                byte[] file = await response.GetContentAsByteArrayAsync();
-                return new DownloadFileResponse 
-                { 
-                    File = new File(file)
-                    {
-                        Name = filename,
-                        ContentType = MediaTypeNames.Application.Octet
-                    } 
-                };
-            }
+            using var response = await dropboxClient.Files.DownloadAsync(downloadArg);
+            var filename = response.Response.AsFile.Name;
+            var fileStream = await response.GetContentAsStreamAsync();
+            var file = await _fileManagementClient.UploadAsync(fileStream, MediaTypeNames.Application.Octet, filename);
+            return new DownloadFileResponse { File = file };
         }
 
         [Action("Get link for file download", Description = "Get temporary link for download of a file")]
