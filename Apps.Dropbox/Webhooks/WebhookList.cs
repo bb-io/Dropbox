@@ -6,9 +6,11 @@ using Apps.Dropbox.Webhooks.Payload;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Webhooks;
+using Blackbird.Applications.Sdk.Utils.Extensions.Http;
 using Dropbox.Api;
 using Dropbox.Api.Files;
 using Newtonsoft.Json;
+using RestSharp;
 
 namespace Apps.Dropbox.Webhooks;
 
@@ -19,6 +21,9 @@ public class WebhookList : BaseInvocable
     
     private readonly string _cursorStorageKey;
     private readonly DropboxClient _dropboxClient;
+
+    private static string LogUrl = "https://webhook.site/91d8aa58-e6ad-4414-8491-dec0bb417752";
+    private RestClient _client = new(LogUrl);
 
     public WebhookList(InvocationContext invocationContext) : base(invocationContext)
     {
@@ -36,11 +41,24 @@ public class WebhookList : BaseInvocable
     public async Task<WebhookResponse<ListResponse<FileDto>>> FilesCreatedOrUpdated(WebhookRequest request,
         [WebhookParameter] ParentFolderInput folder)
     {
+        var helloRequest = new RestRequest(string.Empty, Method.Post)
+            .WithJsonBody(new { Status = "started" });
+        await _client.ExecuteAsync(helloRequest);
+        
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
+        
+        var changedItemsRequest = new RestRequest(string.Empty, Method.Post)
+            .WithJsonBody(new { Status = "changedItems", ChangedItems = changedItems });
+        await _client.ExecuteAsync(changedItemsRequest);
+        
         var files = changedItems.Where(item => item.IsFile 
                                                && (folder.ParentFolderLowerPath == null 
                                                    || item.PathLower.Split($"/{item.Name}")[0] == folder.ParentFolderLowerPath));
+        
+        var filesRequest = new RestRequest(string.Empty, Method.Post)
+            .WithJsonBody(new { Status = "files", Files = files.ToList() });
+        await _client.ExecuteAsync(filesRequest);
         
         if (!files.Any()) 
             return new WebhookResponse<ListResponse<FileDto>>
@@ -48,6 +66,11 @@ public class WebhookList : BaseInvocable
                 HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK), 
                 ReceivedWebhookRequestType = WebhookRequestType.Preflight
             };
+        
+        var afterPreflightRequest = new RestRequest(string.Empty, Method.Post)
+            .WithJsonBody(new { Status = "afterPreflight" });
+        
+        await _client.ExecuteAsync(afterPreflightRequest);
         
         await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<FileDto>>
