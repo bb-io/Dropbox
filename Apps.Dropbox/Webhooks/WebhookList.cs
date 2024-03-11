@@ -18,99 +18,71 @@ namespace Apps.Dropbox.Webhooks;
 public class WebhookList : BaseInvocable
 {
     private static readonly object LockObject = new();
-    
+
     private readonly string _cursorStorageKey;
     private readonly DropboxClient _dropboxClient;
-
-    private static string LogUrl = "https://webhook.site/91d8aa58-e6ad-4414-8491-dec0bb417752";
-    private readonly RestClient _client = new(LogUrl);
 
     public WebhookList(InvocationContext invocationContext) : base(invocationContext)
     {
         _dropboxClient = DropboxClientFactory.CreateDropboxClient(invocationContext.AuthenticationCredentialsProviders);
         var currentAccount = _dropboxClient.Users.GetCurrentAccountAsync().Result;
-    
-        if (currentAccount == null) 
+
+        if (currentAccount == null)
             throw new Exception("Could not fetch account details.");
-        
+
         _cursorStorageKey = $"{currentAccount.AccountId}_cursor";
     }
-    
-    [Webhook("On files created or updated", typeof(WebhookHandler), 
+
+    [Webhook("On files created or updated", typeof(WebhookHandler),
         Description = "This webhook is triggered when a file or files are created or updated.")]
     public async Task<WebhookResponse<ListResponse<FileDto>>> FilesCreatedOrUpdated(WebhookRequest request,
         [WebhookParameter] ParentFolderInput folder)
     {
-        try
-        {
-            var helloRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "started", OptionalInput = folder.ParentFolderLowerPath});
-            await _client.ExecuteAsync(helloRequest);
-        
-            var payload = DeserializePayload(request);
-            var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
-        
-            var changedItemsRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "changedItems", ChangedItems = changedItems.Select(x => new { Name = x.Name, PathDisplay = x.PathDisplay }) });
-            await _client.ExecuteAsync(changedItemsRequest);
-        
-            var files = changedItems.Where(item => item.IsFile &&
-                                                   (folder.ParentFolderLowerPath == null ||
-                                                    item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")));
+        var payload = DeserializePayload(request);
+        var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
-            var fileArray = files as Metadata[] ?? files.ToArray();
-            
-            var filesRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "files after optional input", Files = fileArray.Select(x => new { Name = x.Name, PathDisplay = x.PathDisplay }) });
-            await _client.ExecuteAsync(filesRequest);
-        
-            if (!fileArray.Any()) 
-                return new WebhookResponse<ListResponse<FileDto>>
-                {
-                    HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK), 
-                    ReceivedWebhookRequestType = WebhookRequestType.Preflight
-                };
-        
-            var afterPreflightRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "afterPreflight" });
-        
-            await _client.ExecuteAsync(afterPreflightRequest);
-        
-            await StoreCursor(payload.Cursor, newCursor);
+        var files = changedItems.Where(item => item.IsFile &&
+                                               (folder.ParentFolderLowerPath == null ||
+                                                item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")));
+
+        var fileArray = files as Metadata[] ?? files.ToArray();
+
+        if (fileArray.Length == 0)
+        {
             return new WebhookResponse<ListResponse<FileDto>>
             {
                 HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
-                Result = new ListResponse<FileDto> { Items = fileArray.Select(file => new FileDto(file.AsFile)) }
+                ReceivedWebhookRequestType = WebhookRequestType.Preflight
             };
         }
-        catch (Exception e)
+
+        await StoreCursor(payload.Cursor, newCursor);
+        return new WebhookResponse<ListResponse<FileDto>>
         {
-            var errorRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "error", Message = e.Message, Type = e.GetType().ToString(), StackTrace = e.StackTrace});
-            await _client.ExecuteAsync(errorRequest);
-            
-            throw;
-        }
+            HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
+            Result = new ListResponse<FileDto> { Items = fileArray.Select(file => new FileDto(file.AsFile)) }
+        };
     }
-    
-    [Webhook("On folders created or updated", typeof(WebhookHandler), 
+
+    [Webhook("On folders created or updated", typeof(WebhookHandler),
         Description = "This webhook is triggered when a folder or folders are created or updated.")]
-    public async Task<WebhookResponse<ListResponse<FolderDto>>> FoldersCreatedOrUpdated(WebhookRequest request, 
+    public async Task<WebhookResponse<ListResponse<FolderDto>>> FoldersCreatedOrUpdated(WebhookRequest request,
         [WebhookParameter] ParentFolderInput folder)
     {
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
-        var folders = changedItems.Where(item => item.IsFolder 
-                                                 && (folder.ParentFolderLowerPath == null 
-                                                     || item.PathLower.Split($"/{item.Name}")[0] == folder.ParentFolderLowerPath));
-        
-        if (!folders.Any()) 
+        var folders = changedItems.Where(item => item.IsFolder
+                                                 && (folder.ParentFolderLowerPath == null
+                                                     || item.PathLower.Split($"/{item.Name}")[0] ==
+                                                     folder.ParentFolderLowerPath));
+
+        if (!folders.Any())
             return new WebhookResponse<ListResponse<FolderDto>>
             {
-                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK), 
+                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
                 ReceivedWebhookRequestType = WebhookRequestType.Preflight
             };
-    
+
         await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<FolderDto>>
         {
@@ -119,36 +91,37 @@ public class WebhookList : BaseInvocable
         };
     }
 
-    [Webhook("On files or folders deleted", typeof(WebhookHandler), 
+    [Webhook("On files or folders deleted", typeof(WebhookHandler),
         Description = "This webhook is triggered when file(s) or folder(s) are deleted.")]
-    public async Task<WebhookResponse<ListResponse<DeletedItemDto>>> FileOrFolderDeleted(WebhookRequest request, 
+    public async Task<WebhookResponse<ListResponse<DeletedItemDto>>> FileOrFolderDeleted(WebhookRequest request,
         [WebhookParameter] ParentFolderInput folder)
     {
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
-        var deletedItems = changedItems.Where(item => item.IsDeleted  
-                                                      && (folder.ParentFolderLowerPath == null 
-                                                          || item.PathLower.Split($"/{item.Name}")[0] == folder.ParentFolderLowerPath));
-        
-        if (!deletedItems.Any()) 
+        var deletedItems = changedItems.Where(item => item.IsDeleted
+                                                      && (folder.ParentFolderLowerPath == null
+                                                          || item.PathLower.Split($"/{item.Name}")[0] ==
+                                                          folder.ParentFolderLowerPath));
+
+        if (!deletedItems.Any())
             return new WebhookResponse<ListResponse<DeletedItemDto>>
             {
-                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK), 
+                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
                 ReceivedWebhookRequestType = WebhookRequestType.Preflight
             };
-        
+
         await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<DeletedItemDto>>
         {
             HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
-            Result = new ListResponse<DeletedItemDto> 
+            Result = new ListResponse<DeletedItemDto>
                 { Items = deletedItems.Select(item => new DeletedItemDto(item.AsDeleted)) }
         };
     }
-    
+
     private EventPayload DeserializePayload(WebhookRequest request)
     {
-        var payload = JsonConvert.DeserializeObject<EventPayload>(request.Body.ToString()) 
+        var payload = JsonConvert.DeserializeObject<EventPayload>(request.Body.ToString())
                       ?? throw new InvalidCastException(nameof(request.Body));
         return payload;
     }
@@ -166,14 +139,14 @@ public class WebhookList : BaseInvocable
             newCursor = listFolderResult.Cursor;
             changedItems.AddRange(listFolderResult.Entries);
         }
-        
+
         return changedItems;
     }
 
     private async Task StoreCursor(string oldCursor, string newCursor)
     {
         var bridgeService = new BridgeService(InvocationContext.UriInfo.BridgeServiceUrl.ToString());
-        
+
         lock (LockObject)
         {
             var storedCursor = bridgeService.RetrieveValue(_cursorStorageKey).Result!.Trim('"');
