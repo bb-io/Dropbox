@@ -23,7 +23,7 @@ public class WebhookList : BaseInvocable
     private readonly DropboxClient _dropboxClient;
 
     private static string LogUrl = "https://webhook.site/91d8aa58-e6ad-4414-8491-dec0bb417752";
-    private RestClient _client = new(LogUrl);
+    private readonly RestClient _client = new(LogUrl);
 
     public WebhookList(InvocationContext invocationContext) : base(invocationContext)
     {
@@ -57,12 +57,15 @@ public class WebhookList : BaseInvocable
             var files = changedItems.Where(item => item.IsFile 
                                                    && (folder.ParentFolderLowerPath == null 
                                                        || item.PathLower.Split($"/{item.Name}")[0] == folder.ParentFolderLowerPath));
-        
+
+            var fileArray = files as Metadata[] ?? files.ToArray();
+            
+            var settings = new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore };
             var filesRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "files", Files = files.ToList() });
+                .WithJsonBody(new { Status = "files", Files = JsonConvert.SerializeObject(fileArray.ToList(), settings)  });
             await _client.ExecuteAsync(filesRequest);
         
-            if (!files.Any()) 
+            if (!fileArray.Any()) 
                 return new WebhookResponse<ListResponse<FileDto>>
                 {
                     HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK), 
@@ -78,7 +81,7 @@ public class WebhookList : BaseInvocable
             return new WebhookResponse<ListResponse<FileDto>>
             {
                 HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
-                Result = new ListResponse<FileDto> { Items = files.Select(file => new FileDto(file.AsFile)) }
+                Result = new ListResponse<FileDto> { Items = fileArray.Select(file => new FileDto(file.AsFile)) }
             };
         }
         catch (Exception e)
