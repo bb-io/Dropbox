@@ -41,13 +41,8 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
-        var files = changedItems.Where(item => item.IsFile &&
-                                               (folder.ParentFolderLowerPath == null ||
-                                                item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")));
-
-        var fileArray = files as Metadata[] ?? files.ToArray();
-
-        if (fileArray.Length == 0)
+        var files = FilterItems<FileMetadata>(changedItems, folder);
+        if (files.Count == 0)
         {
             return new WebhookResponse<ListResponse<FileDto>>
             {
@@ -60,7 +55,7 @@ public class WebhookList : BaseInvocable
         return new WebhookResponse<ListResponse<FileDto>>
         {
             HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
-            Result = new ListResponse<FileDto> { Items = fileArray.Select(file => new FileDto(file.AsFile)) }
+            Result = new ListResponse<FileDto> { Items = files.Select(file => new FileDto(file.AsFile)) }
         };
     }
 
@@ -71,17 +66,16 @@ public class WebhookList : BaseInvocable
     {
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
-        var folders = changedItems.Where(item => item.IsFolder
-                                                 && (folder.ParentFolderLowerPath == null
-                                                     || item.PathLower.Split($"/{item.Name}")[0] ==
-                                                     folder.ParentFolderLowerPath));
 
-        if (!folders.Any())
+        var folders = FilterItems<Metadata>(changedItems, folder);
+        if (folders.Count == 0)
+        {
             return new WebhookResponse<ListResponse<FolderDto>>
             {
                 HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
                 ReceivedWebhookRequestType = WebhookRequestType.Preflight
             };
+        }
 
         await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<FolderDto>>
@@ -98,17 +92,16 @@ public class WebhookList : BaseInvocable
     {
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
-        var deletedItems = changedItems.Where(item => item.IsDeleted
-                                                      && (folder.ParentFolderLowerPath == null
-                                                          || item.PathLower.Split($"/{item.Name}")[0] ==
-                                                          folder.ParentFolderLowerPath));
-
-        if (!deletedItems.Any())
+        
+        var deletedItems = FilterItems<Metadata>(changedItems, folder);
+        if (deletedItems.Count == 0)
+        {
             return new WebhookResponse<ListResponse<DeletedItemDto>>
             {
                 HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
                 ReceivedWebhookRequestType = WebhookRequestType.Preflight
             };
+        }
 
         await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<DeletedItemDto>>
@@ -153,5 +146,14 @@ public class WebhookList : BaseInvocable
             if (storedCursor == oldCursor)
                 bridgeService.StoreValue(_cursorStorageKey, newCursor).Wait();
         }
+    }
+    
+    private List<T> FilterItems<T>(IEnumerable<Metadata> items, ParentFolderInput folder) where T : Metadata
+    {
+        return items.Where(item => (item is T) &&
+                                   (folder.ParentFolderLowerPath == null ||
+                                    item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")))
+            .Cast<T>()
+            .ToList();
     }
 }
