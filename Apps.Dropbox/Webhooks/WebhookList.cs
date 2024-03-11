@@ -51,7 +51,7 @@ public class WebhookList : BaseInvocable
             var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
         
             var changedItemsRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "changedItems", ChangedItems = changedItems });
+                .WithJsonBody(new { Status = "changedItems", ChangedItems = changedItems.Select(x => new { Name = x.Name, PathDisplay = x.PathDisplay }) });
             await _client.ExecuteAsync(changedItemsRequest);
         
             var files = changedItems.Where(item => item.IsFile 
@@ -62,7 +62,7 @@ public class WebhookList : BaseInvocable
             
             var settings = new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore };
             var filesRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "files", Files = JsonConvert.SerializeObject(fileArray.ToList(), settings)  });
+                .WithJsonBody(new { Status = "files", Files = fileArray.Select(x => new { Name = x.Name, PathDisplay = x.PathDisplay }) });
             await _client.ExecuteAsync(filesRequest);
         
             if (!fileArray.Any()) 
