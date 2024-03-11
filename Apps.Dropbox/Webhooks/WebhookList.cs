@@ -41,43 +41,54 @@ public class WebhookList : BaseInvocable
     public async Task<WebhookResponse<ListResponse<FileDto>>> FilesCreatedOrUpdated(WebhookRequest request,
         [WebhookParameter] ParentFolderInput folder)
     {
-        var helloRequest = new RestRequest(string.Empty, Method.Post)
-            .WithJsonBody(new { Status = "started" });
-        await _client.ExecuteAsync(helloRequest);
+        try
+        {
+            var helloRequest = new RestRequest(string.Empty, Method.Post)
+                .WithJsonBody(new { Status = "started" });
+            await _client.ExecuteAsync(helloRequest);
         
-        var payload = DeserializePayload(request);
-        var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
+            var payload = DeserializePayload(request);
+            var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
         
-        var changedItemsRequest = new RestRequest(string.Empty, Method.Post)
-            .WithJsonBody(new { Status = "changedItems", ChangedItems = changedItems });
-        await _client.ExecuteAsync(changedItemsRequest);
+            var changedItemsRequest = new RestRequest(string.Empty, Method.Post)
+                .WithJsonBody(new { Status = "changedItems", ChangedItems = changedItems });
+            await _client.ExecuteAsync(changedItemsRequest);
         
-        var files = changedItems.Where(item => item.IsFile 
-                                               && (folder.ParentFolderLowerPath == null 
-                                                   || item.PathLower.Split($"/{item.Name}")[0] == folder.ParentFolderLowerPath));
+            var files = changedItems.Where(item => item.IsFile 
+                                                   && (folder.ParentFolderLowerPath == null 
+                                                       || item.PathLower.Split($"/{item.Name}")[0] == folder.ParentFolderLowerPath));
         
-        var filesRequest = new RestRequest(string.Empty, Method.Post)
-            .WithJsonBody(new { Status = "files", Files = files.ToList() });
-        await _client.ExecuteAsync(filesRequest);
+            var filesRequest = new RestRequest(string.Empty, Method.Post)
+                .WithJsonBody(new { Status = "files", Files = files.ToList() });
+            await _client.ExecuteAsync(filesRequest);
         
-        if (!files.Any()) 
+            if (!files.Any()) 
+                return new WebhookResponse<ListResponse<FileDto>>
+                {
+                    HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK), 
+                    ReceivedWebhookRequestType = WebhookRequestType.Preflight
+                };
+        
+            var afterPreflightRequest = new RestRequest(string.Empty, Method.Post)
+                .WithJsonBody(new { Status = "afterPreflight" });
+        
+            await _client.ExecuteAsync(afterPreflightRequest);
+        
+            await StoreCursor(payload.Cursor, newCursor);
             return new WebhookResponse<ListResponse<FileDto>>
             {
-                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK), 
-                ReceivedWebhookRequestType = WebhookRequestType.Preflight
+                HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
+                Result = new ListResponse<FileDto> { Items = files.Select(file => new FileDto(file.AsFile)) }
             };
-        
-        var afterPreflightRequest = new RestRequest(string.Empty, Method.Post)
-            .WithJsonBody(new { Status = "afterPreflight" });
-        
-        await _client.ExecuteAsync(afterPreflightRequest);
-        
-        await StoreCursor(payload.Cursor, newCursor);
-        return new WebhookResponse<ListResponse<FileDto>>
+        }
+        catch (Exception e)
         {
-            HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
-            Result = new ListResponse<FileDto> { Items = files.Select(file => new FileDto(file.AsFile)) }
-        };
+            var errorRequest = new RestRequest(string.Empty, Method.Post)
+                .WithJsonBody(new { Status = "error", Message = e.Message, Type = e.GetType().ToString(), StackTrace = e.StackTrace});
+            await _client.ExecuteAsync(errorRequest);
+            
+            throw;
+        }
     }
     
     [Webhook("On folders created or updated", typeof(WebhookHandler), 
