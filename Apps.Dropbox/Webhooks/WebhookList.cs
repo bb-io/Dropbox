@@ -44,7 +44,7 @@ public class WebhookList : BaseInvocable
         try
         {
             var helloRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "started" });
+                .WithJsonBody(new { Status = "started", OptionalInput = folder.ParentFolderLowerPath});
             await _client.ExecuteAsync(helloRequest);
         
             var payload = DeserializePayload(request);
@@ -54,15 +54,14 @@ public class WebhookList : BaseInvocable
                 .WithJsonBody(new { Status = "changedItems", ChangedItems = changedItems.Select(x => new { Name = x.Name, PathDisplay = x.PathDisplay }) });
             await _client.ExecuteAsync(changedItemsRequest);
         
-            var files = changedItems.Where(item => item.IsFile 
-                                                   && (folder.ParentFolderLowerPath == null 
-                                                       || item.PathLower.Split($"/{item.Name}")[0] == folder.ParentFolderLowerPath));
+            var files = changedItems.Where(item => item.IsFile &&
+                                                   (folder.ParentFolderLowerPath == null ||
+                                                    item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")));
 
             var fileArray = files as Metadata[] ?? files.ToArray();
             
-            var settings = new JsonSerializerSettings { ReferenceLoopHandling = ReferenceLoopHandling.Ignore };
             var filesRequest = new RestRequest(string.Empty, Method.Post)
-                .WithJsonBody(new { Status = "files", Files = fileArray.Select(x => new { Name = x.Name, PathDisplay = x.PathDisplay }) });
+                .WithJsonBody(new { Status = "files after optional input", Files = fileArray.Select(x => new { Name = x.Name, PathDisplay = x.PathDisplay }) });
             await _client.ExecuteAsync(filesRequest);
         
             if (!fileArray.Any()) 
