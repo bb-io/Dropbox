@@ -41,7 +41,9 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
-        var files = FilterItems<FileMetadata>(changedItems, folder);
+        var files = changedItems.Where(item => item.IsFile &&
+                                               (folder.ParentFolderLowerPath == null ||
+                                                item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
         if (files.Count == 0)
         {
             return new WebhookResponse<ListResponse<FileDto>>
@@ -67,7 +69,9 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
-        var folders = FilterItems<Metadata>(changedItems, folder);
+        var folders = changedItems.Where(item => item.IsFolder
+                                                 && (folder.ParentFolderLowerPath == null
+                                                     || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
         if (folders.Count == 0)
         {
             return new WebhookResponse<ListResponse<FolderDto>>
@@ -92,8 +96,10 @@ public class WebhookList : BaseInvocable
     {
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
-        
-        var deletedItems = FilterItems<Metadata>(changedItems, folder);
+
+        var deletedItems = changedItems.Where(item => item.IsDeleted
+                                                      && (folder.ParentFolderLowerPath == null
+                                                          || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
         if (deletedItems.Count == 0)
         {
             return new WebhookResponse<ListResponse<DeletedItemDto>>
@@ -146,14 +152,5 @@ public class WebhookList : BaseInvocable
             if (storedCursor == oldCursor)
                 bridgeService.StoreValue(_cursorStorageKey, newCursor).Wait();
         }
-    }
-    
-    private List<T> FilterItems<T>(IEnumerable<Metadata> items, ParentFolderInput folder) where T : Metadata
-    {
-        return items.Where(item => (item is T) &&
-                                   (folder.ParentFolderLowerPath == null ||
-                                    item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")))
-            .Cast<T>()
-            .ToList();
     }
 }
