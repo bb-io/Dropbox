@@ -2,13 +2,20 @@
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
 using Blackbird.Applications.Sdk.Common.Invocation;
+using Blackbird.Applications.Sdk.Common.Metadata;
 
 namespace Apps.Dropbox
 {
-    public class DropboxApplication : BaseInvocable, IApplication
+    public class DropboxApplication : BaseInvocable, IApplication, ICategoryProvider
     {
         private readonly Dictionary<Type, object> _typesInstances;
 
+        public IEnumerable<ApplicationCategory> Categories
+        {
+            get => [ApplicationCategory.FileManagementAndStorage];
+            set { }
+        }
+        
         public DropboxApplication(InvocationContext invocationContext) : base(invocationContext)
         {
             _typesInstances = CreateTypesInstances();
