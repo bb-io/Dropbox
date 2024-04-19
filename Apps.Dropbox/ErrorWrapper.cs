@@ -14,7 +14,7 @@ public class ErrorWrapper
         {
             if(e.Message.Contains(ErrorMessages.TokenNotAssociatedWithTeam))
             {
-                throw new InvalidOperationException("This token is not associated with a team", e);
+                throw new InvalidOperationException("This token is not associated with a team");
             }
             
             throw;        
