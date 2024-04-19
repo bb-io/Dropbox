@@ -12,6 +12,12 @@ public class ConnectionValidator : IConnectionValidator
     {
         try
         {
+            var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "Access token").Value;
+            await LogAsync(new
+            {
+                AccessToken = accessToken
+            });
+            
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var currentAccount = await dropboxClient.Users.GetCurrentAccountAsync();
         
