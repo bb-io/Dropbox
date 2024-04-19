@@ -41,7 +41,9 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] FilesRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var list = await dropboxClient.Files.ListFolderAsync(input.Path);
+            
+            string path = input.Path == "/" ? String.Empty : input.Path;
+            var list = await dropboxClient.Files.ListFolderAsync(path);
             var files = list.Entries.Where(e => e.IsFile).Select(f => new FileDto(f.AsFile));
             return new FilesResponse { Files = files };
         }

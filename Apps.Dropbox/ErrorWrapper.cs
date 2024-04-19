@@ -2,7 +2,7 @@
 
 namespace Apps.Dropbox;
 
-public class ErrorWrapper
+public static class ErrorWrapper
 {
     public static async Task<T> WrapError<T>(Func<Task<T>> action)
     {
