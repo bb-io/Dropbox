@@ -95,7 +95,7 @@ namespace Apps.Dropbox.Actions
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var deleteArg = new DeleteArg(input.FolderPath);
-            var result = await dropboxClient.Files.DeleteV2Async(deleteArg);
+            var result = await ErrorWrapper.WrapError(async () => await dropboxClient.Files.DeleteV2Async(deleteArg));
             return new DeleteResponse { DeletedObjectPath = result.Metadata.PathDisplay };
         }
 
@@ -150,13 +150,22 @@ namespace Apps.Dropbox.Actions
         }
 
         [Action("Share folder", Description = "Share given folder")]
-        public void ShareFolder(
+        public async Task<ShareFolderResponse> ShareFolder(
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] ShareFolderRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var shareFolderArg = new ShareFolderArg(input.FolderPath);
-            dropboxClient.Sharing.ShareFolderAsync(shareFolderArg);
+            var result = await dropboxClient.Sharing.ShareFolderAsync(shareFolderArg);
+            
+            return new ShareFolderResponse
+            {
+                IsComplete = result.IsComplete,
+                IsAsyncJob = result.IsAsyncJobId,
+                Name = result.AsComplete.Value.Name,
+                PreviewUrl = result.AsComplete.Value.PreviewUrl,
+                SharedFolderId = result.AsComplete.Value.SharedFolderId
+            };
         }
 
         [Action("Download file", Description = "Download specified file")]

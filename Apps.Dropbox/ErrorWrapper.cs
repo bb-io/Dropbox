@@ -12,9 +12,12 @@ public static class ErrorWrapper
         }
         catch (Exception e)
         {
-            if(e.Message.Contains(ErrorMessages.TokenNotAssociatedWithTeam))
+            foreach (var errorKeyValue in ErrorMessages.ErrorMessagesDictionary)
             {
-                throw new InvalidOperationException("This token is not associated with a team");
+                if (e.Message.Contains(errorKeyValue.Key))
+                {
+                    throw new InvalidOperationException(errorKeyValue.Value);
+                }
             }
             
             throw;        
