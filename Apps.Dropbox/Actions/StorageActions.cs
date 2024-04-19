@@ -4,6 +4,7 @@ using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Apps.Dropbox.Models.Responses;
 using Apps.Dropbox.Models.Requests;
+using Apps.Dropbox.Utils;
 using Dropbox.Api.Files;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Sharing;
@@ -102,10 +103,10 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] MoveFileRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var filename = input.TargetFilename ?? input.CurrentFilePath.Split("/")[^1];
+            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
             var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
             var result = await dropboxClient.Files.MoveV2Async(moveArg);
-            
+    
             return new MoveFileResponse
             {
                 FileName = result.Metadata.Name,
@@ -119,10 +120,10 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] MoveFileRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var filename = input.TargetFilename ?? input.CurrentFilePath.Split("/")[^1];
+            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
             var copyArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
             var result = await dropboxClient.Files.CopyV2Async(copyArg);
-            
+    
             return new MoveFileResponse
             {
                 FileName = result.Metadata.Name,
