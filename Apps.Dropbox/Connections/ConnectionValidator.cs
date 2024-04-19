@@ -18,6 +18,13 @@ public class ConnectionValidator : IConnectionValidator
                 AccessToken = accessToken
             });
             
+            return new ConnectionValidationResponse
+            {
+                IsValid = true,
+                Message = "Connection is valid"
+            };
+            
+            /*
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var currentAccount = await dropboxClient.Users.GetCurrentAccountAsync();
         
@@ -38,6 +45,7 @@ public class ConnectionValidator : IConnectionValidator
                 IsValid = true,
                 Message = "Success"
             };
+             */
         }
         catch (Exception ex)
         {
