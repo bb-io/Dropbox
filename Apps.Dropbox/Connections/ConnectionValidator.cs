@@ -12,53 +12,31 @@ public class ConnectionValidator : IConnectionValidator
     {
         try
         {
-            var accessToken = authenticationCredentialsProviders.First(p => p.KeyName == "Access token").Value;
-            await LogAsync(new
-            {
-                AccessToken = accessToken
-            });
-            
-            return new ConnectionValidationResponse
-            {
-                IsValid = true,
-                Message = "Connection is valid"
-            };
-            
-            /*
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var currentAccount = await dropboxClient.Users.GetCurrentAccountAsync();
-        
-            await LogAsync(new
-            {
-                currentAccount
-            });
-        
+
             if (currentAccount is null)
+            {
                 return new ConnectionValidationResponse
                 {
                     IsValid = false,
                     Message = "Ping failed"
                 };
+            }
         
             return new ConnectionValidationResponse
             {
                 IsValid = true,
                 Message = "Success"
             };
-             */
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            await LogAsync(new
-            {
-                ex.Message,
-                ex.StackTrace
-            });
-        
+            await LogAsync(new { Message = e.Message, StackTrace = e.StackTrace});
             return new ConnectionValidationResponse
             {
                 IsValid = false,
-                Message = ex.Message
+                Message = e.Message
             };
         }
     }
