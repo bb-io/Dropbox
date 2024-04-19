@@ -4,11 +4,11 @@ namespace Apps.Dropbox;
 
 public class ErrorWrapper
 {
-    public static Task<T> WrapError<T>(Func<Task<T>> action)
+    public static async Task<T> WrapError<T>(Func<Task<T>> action)
     {
         try
         {
-            return action();
+            return await action();
         }
         catch (Exception e)
         {
