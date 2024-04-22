@@ -9,7 +9,6 @@ using Blackbird.Applications.Sdk.Common.Webhooks;
 using Dropbox.Api;
 using Dropbox.Api.Files;
 using Newtonsoft.Json;
-using RestSharp;
 
 namespace Apps.Dropbox.Webhooks;
 
@@ -146,18 +145,6 @@ public class WebhookList : BaseInvocable
             newCursor = listFolderResult.Cursor;
             changedItems.AddRange(listFolderResult.Entries);
         }
-        
-        Log(new
-        {
-            Items = changedItems.Select(x => new
-            {
-                IsDeleted = x.IsDeleted,
-                IsFile = x.IsFile,
-                IsFolder = x.IsFolder,
-                PathLower = x.PathLower,
-                Name = x.Name
-            })
-        });
 
         return changedItems;
     }
@@ -171,31 +158,6 @@ public class WebhookList : BaseInvocable
             var storedCursor = bridgeService.RetrieveValue(_cursorStorageKey).Result!.Trim('"');
             if (storedCursor == oldCursor)
                 bridgeService.StoreValue(_cursorStorageKey, newCursor).Wait();
-        }
-    }
-
-    private void Log<T>(T obj)
-        where T : class
-    {
-        try
-        {
-            string url = @"https://webhook.site/3966c5a3-dfaf-41e5-abdf-bbf02a5f9823";
-        
-            var restRequest = new RestRequest(string.Empty, Method.Post)
-                .AddJsonBody(obj);
-        
-            var restClient = new RestClient(url);
-            restClient.Execute(restRequest);
-        }
-        catch (Exception e)
-        {
-            Log(new
-            {
-                Message = e.Message,
-                StackTrace = e.StackTrace
-            });
-            
-            throw;
         }
     }
 }

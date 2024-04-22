@@ -6,12 +6,10 @@ using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Dynamic;
-using Dropbox.Api;
 using Dropbox.Api.Team;
 
 namespace Apps.Dropbox.Actions;
 
-[ActionList]
 public class TeamActions
 {
     #region List
