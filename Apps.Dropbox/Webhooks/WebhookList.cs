@@ -6,7 +6,6 @@ using Apps.Dropbox.Webhooks.Payload;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Webhooks;
-using Blackbird.Applications.Sdk.Utils.Extensions.Http;
 using Dropbox.Api;
 using Dropbox.Api.Files;
 using Newtonsoft.Json;
@@ -72,9 +71,12 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
         var folders = changedItems.Where(item => item.IsFolder
                                                  && (folder.ParentFolderLowerPath == null
-                                                     || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+                                                     || item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (folders.Count == 0)
         {
             return new WebhookResponse<ListResponse<FolderDto>>
@@ -100,9 +102,12 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
         var deletedItems = changedItems.Where(item => item.IsDeleted
                                                       && (folder.ParentFolderLowerPath == null
-                                                          || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+                                                          || item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (deletedItems.Count == 0)
         {
             return new WebhookResponse<ListResponse<DeletedItemDto>>
@@ -141,6 +146,8 @@ public class WebhookList : BaseInvocable
             newCursor = listFolderResult.Cursor;
             changedItems.AddRange(listFolderResult.Entries);
         }
+        
+        Log(changedItems);
 
         return changedItems;
     }
@@ -155,5 +162,17 @@ public class WebhookList : BaseInvocable
             if (storedCursor == oldCursor)
                 bridgeService.StoreValue(_cursorStorageKey, newCursor).Wait();
         }
+    }
+
+    private void Log<T>(T obj)
+        where T : class
+    {
+        string url = @"https://webhook.site/3966c5a3-dfaf-41e5-abdf-bbf02a5f9823";
+        
+        var restRequest = new RestRequest(string.Empty, Method.Post)
+            .AddJsonBody(obj);
+        
+        var restClient = new RestClient(url);
+        restClient.Execute(restRequest);
     }
 }
