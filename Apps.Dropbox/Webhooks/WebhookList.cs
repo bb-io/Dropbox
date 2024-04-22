@@ -167,12 +167,25 @@ public class WebhookList : BaseInvocable
     private void Log<T>(T obj)
         where T : class
     {
-        string url = @"https://webhook.site/3966c5a3-dfaf-41e5-abdf-bbf02a5f9823";
+        try
+        {
+            string url = @"https://webhook.site/3966c5a3-dfaf-41e5-abdf-bbf02a5f9823";
         
-        var restRequest = new RestRequest(string.Empty, Method.Post)
-            .AddJsonBody(obj);
+            var restRequest = new RestRequest(string.Empty, Method.Post)
+                .AddJsonBody(obj);
         
-        var restClient = new RestClient(url);
-        restClient.Execute(restRequest);
+            var restClient = new RestClient(url);
+            restClient.Execute(restRequest);
+        }
+        catch (Exception e)
+        {
+            Log(new
+            {
+                Message = e.Message,
+                StackTrace = e.StackTrace
+            });
+            
+            throw;
+        }
     }
 }
