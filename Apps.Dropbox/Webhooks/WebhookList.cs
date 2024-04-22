@@ -154,7 +154,8 @@ public class WebhookList : BaseInvocable
                 IsDeleted = x.IsDeleted,
                 IsFile = x.IsFile,
                 IsFolder = x.IsFolder,
-                PathLower = x.PathLower
+                PathLower = x.PathLower,
+                Name = x.Name
             })
         });
 
