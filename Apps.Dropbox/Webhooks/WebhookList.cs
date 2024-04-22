@@ -147,7 +147,16 @@ public class WebhookList : BaseInvocable
             changedItems.AddRange(listFolderResult.Entries);
         }
         
-        Log(changedItems);
+        Log(new
+        {
+            Items = changedItems.Select(x => new
+            {
+                IsDeleted = x.IsDeleted,
+                IsFile = x.IsFile,
+                IsFolder = x.IsFolder,
+                PathLower = x.PathLower
+            })
+        });
 
         return changedItems;
     }
