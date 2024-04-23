@@ -30,7 +30,9 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] FoldersRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var list = await dropboxClient.Files.ListFolderAsync(input.Path);
+            
+            string path = input.Path == "/" ? String.Empty : input.Path;
+            var list = await dropboxClient.Files.ListFolderAsync(path);
             var folders = list.Entries.Where(e => e.IsFolder).Select(f => new FolderDto(f.AsFolder));
             return new FoldersResponse { Folders = folders };
         }
