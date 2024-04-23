@@ -4,17 +4,18 @@ using Blackbird.Applications.Sdk.Common.Invocation;
 
 namespace Apps.Dropbox.DataSourceHandlers;
 
-public class TeamMemberDataSourceHandler : BaseInvocable, IAsyncDataSourceHandler
+public class TeamMemberDataSourceHandler(InvocationContext invocationContext)
+    : BaseInvocable(invocationContext), IAsyncDataSourceHandler
 {
-    public TeamMemberDataSourceHandler(InvocationContext invocationContext) : base(invocationContext)
-    {
-    }
-
     public async Task<Dictionary<string, string>> GetDataAsync(DataSourceContext context,
         CancellationToken cancellationToken)
     {
-        var client = DropboxClientFactory.CreateDropboxTeamClient(InvocationContext.AuthenticationCredentialsProviders);
-        var teamMembers = (await client.Team.MembersListAsync()).Members;
-        return teamMembers.ToDictionary(m => m.Profile.TeamMemberId, m => m.Profile.Name.DisplayName);
+        return await ErrorWrapper.WrapError(async () =>
+        {
+            var client =
+                DropboxClientFactory.CreateDropboxTeamClient(InvocationContext.AuthenticationCredentialsProviders);
+            var members = (await client.Team.MembersListAsync()).Members;
+            return members.ToDictionary(m => m.Profile.TeamMemberId, m => m.Profile.Email);
+        });
     }
 }

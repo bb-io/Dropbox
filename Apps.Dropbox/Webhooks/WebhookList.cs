@@ -6,11 +6,9 @@ using Apps.Dropbox.Webhooks.Payload;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Webhooks;
-using Blackbird.Applications.Sdk.Utils.Extensions.Http;
 using Dropbox.Api;
 using Dropbox.Api.Files;
 using Newtonsoft.Json;
-using RestSharp;
 
 namespace Apps.Dropbox.Webhooks;
 
@@ -41,9 +39,12 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
         var files = changedItems.Where(item => item.IsFile &&
                                                (folder.ParentFolderLowerPath == null ||
-                                                item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+                                                item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (files.Count == 0)
         {
             return new WebhookResponse<ListResponse<FileDto>>
@@ -69,9 +70,12 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
         var folders = changedItems.Where(item => item.IsFolder
                                                  && (folder.ParentFolderLowerPath == null
-                                                     || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+                                                     || item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (folders.Count == 0)
         {
             return new WebhookResponse<ListResponse<FolderDto>>
@@ -97,9 +101,12 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
         var deletedItems = changedItems.Where(item => item.IsDeleted
                                                       && (folder.ParentFolderLowerPath == null
-                                                          || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+                                                          || item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (deletedItems.Count == 0)
         {
             return new WebhookResponse<ListResponse<DeletedItemDto>>
