@@ -6,19 +6,15 @@ using Apps.Dropbox.Webhooks.Payload;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Webhooks;
-using Blackbird.Applications.Sdk.Utils.Extensions.Http;
 using Dropbox.Api;
 using Dropbox.Api.Files;
 using Newtonsoft.Json;
-using RestSharp;
 
 namespace Apps.Dropbox.Webhooks;
 
 [WebhookList]
 public class WebhookList : BaseInvocable
 {
-    private static readonly object LockObject = new();
-
     private readonly string _cursorStorageKey;
     private readonly DropboxClient _dropboxClient;
 
@@ -41,9 +37,14 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
-        var files = changedItems.Where(item => item.IsFile &&
-                                               (folder.ParentFolderLowerPath == null ||
-                                                item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+        await StoreCursor(payload.Cursor, newCursor);
+
+        var files = changedItems
+            .Where(item => item.IsFile &&
+                           (folder.ParentFolderLowerPath == null ||
+                            item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")))
+            .ToList();
+
         if (files.Count == 0)
         {
             return new WebhookResponse<ListResponse<FileDto>>
@@ -53,7 +54,6 @@ public class WebhookList : BaseInvocable
             };
         }
 
-        await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<FileDto>>
         {
             HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
@@ -69,9 +69,14 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
-        var folders = changedItems.Where(item => item.IsFolder
-                                                 && (folder.ParentFolderLowerPath == null
-                                                     || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+        await StoreCursor(payload.Cursor, newCursor);
+
+        var folders = changedItems
+            .Where(item => item.IsFolder
+                           && (folder.ParentFolderLowerPath == null
+                               || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")))
+            .ToList();
+
         if (folders.Count == 0)
         {
             return new WebhookResponse<ListResponse<FolderDto>>
@@ -81,7 +86,6 @@ public class WebhookList : BaseInvocable
             };
         }
 
-        await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<FolderDto>>
         {
             HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
@@ -97,9 +101,15 @@ public class WebhookList : BaseInvocable
         var payload = DeserializePayload(request);
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
-        var deletedItems = changedItems.Where(item => item.IsDeleted
-                                                      && (folder.ParentFolderLowerPath == null
-                                                          || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/"))).ToList();
+        await StoreCursor(payload.Cursor, newCursor);
+
+        var deletedItems = changedItems
+            .Where(item => item.IsDeleted
+                           && (folder.ParentFolderLowerPath == null
+                               || item.PathLower.StartsWith(folder.ParentFolderLowerPath +
+                                                            "/")))
+            .ToList();
+        
         if (deletedItems.Count == 0)
         {
             return new WebhookResponse<ListResponse<DeletedItemDto>>
@@ -109,7 +119,6 @@ public class WebhookList : BaseInvocable
             };
         }
 
-        await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<DeletedItemDto>>
         {
             HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
@@ -146,11 +155,8 @@ public class WebhookList : BaseInvocable
     {
         var bridgeService = new BridgeService(InvocationContext.UriInfo.BridgeServiceUrl.ToString());
 
-        lock (LockObject)
-        {
-            var storedCursor = bridgeService.RetrieveValue(_cursorStorageKey).Result!.Trim('"');
-            if (storedCursor == oldCursor)
-                bridgeService.StoreValue(_cursorStorageKey, newCursor).Wait();
-        }
+        var storedCursor = bridgeService.RetrieveValue(_cursorStorageKey).Result?.Trim('"');
+        if (storedCursor is null || oldCursor == storedCursor)
+            await bridgeService.StoreValue(_cursorStorageKey, newCursor);
     }
 }
