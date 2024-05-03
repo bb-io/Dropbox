@@ -54,7 +54,6 @@ public class WebhookList : BaseInvocable
             };
         }
 
-        await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<FileDto>>
         {
             HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
