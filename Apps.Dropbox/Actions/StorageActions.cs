@@ -4,6 +4,7 @@ using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Apps.Dropbox.Models.Responses;
 using Apps.Dropbox.Models.Requests;
+using Apps.Dropbox.Utils;
 using Dropbox.Api.Files;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Sharing;
@@ -29,7 +30,9 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] FoldersRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var list = await dropboxClient.Files.ListFolderAsync(input.Path);
+            
+            string path = input.Path == "/" ? String.Empty : input.Path;
+            var list = await dropboxClient.Files.ListFolderAsync(path);
             var folders = list.Entries.Where(e => e.IsFolder).Select(f => new FolderDto(f.AsFolder));
             return new FoldersResponse { Folders = folders };
         }
@@ -40,7 +43,9 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] FilesRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var list = await dropboxClient.Files.ListFolderAsync(input.Path);
+            
+            string path = input.Path == "/" ? String.Empty : input.Path;
+            var list = await dropboxClient.Files.ListFolderAsync(path);
             var files = list.Entries.Where(e => e.IsFile).Select(f => new FileDto(f.AsFile));
             return new FilesResponse { Files = files };
         }
@@ -92,7 +97,7 @@ namespace Apps.Dropbox.Actions
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var deleteArg = new DeleteArg(input.FolderPath);
-            var result = await dropboxClient.Files.DeleteV2Async(deleteArg);
+            var result = await ErrorWrapper.WrapError(async () => await dropboxClient.Files.DeleteV2Async(deleteArg));
             return new DeleteResponse { DeletedObjectPath = result.Metadata.PathDisplay };
         }
 
@@ -102,10 +107,10 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] MoveFileRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var filename = input.TargetFilename ?? input.CurrentFilePath.Split("/")[^1];
+            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
             var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
             var result = await dropboxClient.Files.MoveV2Async(moveArg);
-            
+    
             return new MoveFileResponse
             {
                 FileName = result.Metadata.Name,
@@ -119,10 +124,10 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] MoveFileRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var filename = input.TargetFilename ?? input.CurrentFilePath.Split("/")[^1];
+            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
             var copyArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
             var result = await dropboxClient.Files.CopyV2Async(copyArg);
-            
+    
             return new MoveFileResponse
             {
                 FileName = result.Metadata.Name,
@@ -147,13 +152,22 @@ namespace Apps.Dropbox.Actions
         }
 
         [Action("Share folder", Description = "Share given folder")]
-        public void ShareFolder(
+        public async Task<ShareFolderResponse> ShareFolder(
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] ShareFolderRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var shareFolderArg = new ShareFolderArg(input.FolderPath);
-            dropboxClient.Sharing.ShareFolderAsync(shareFolderArg);
+            var result = await dropboxClient.Sharing.ShareFolderAsync(shareFolderArg);
+            
+            return new ShareFolderResponse
+            {
+                IsComplete = result.IsComplete,
+                IsAsyncJob = result.IsAsyncJobId,
+                Name = result.AsComplete.Value.Name,
+                PreviewUrl = result.AsComplete.Value.PreviewUrl,
+                SharedFolderId = result.AsComplete.Value.SharedFolderId
+            };
         }
 
         [Action("Download file", Description = "Download specified file")]

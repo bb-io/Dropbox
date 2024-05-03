@@ -38,13 +38,13 @@ public class WebhookList : BaseInvocable
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
         await StoreCursor(payload.Cursor, newCursor);
-
-        var files = changedItems
-            .Where(item => item.IsFile &&
-                           (folder.ParentFolderLowerPath == null ||
-                            item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")))
-            .ToList();
-
+        
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
+        var files = changedItems.Where(item => item.IsFile &&
+                                               (folder.ParentFolderLowerPath == null ||
+                                                item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (files.Count == 0)
         {
             return new WebhookResponse<ListResponse<FileDto>>
@@ -54,6 +54,7 @@ public class WebhookList : BaseInvocable
             };
         }
 
+        await StoreCursor(payload.Cursor, newCursor);
         return new WebhookResponse<ListResponse<FileDto>>
         {
             HttpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK),
@@ -71,12 +72,12 @@ public class WebhookList : BaseInvocable
 
         await StoreCursor(payload.Cursor, newCursor);
 
-        var folders = changedItems
-            .Where(item => item.IsFolder
-                           && (folder.ParentFolderLowerPath == null
-                               || item.PathLower.StartsWith(folder.ParentFolderLowerPath + "/")))
-            .ToList();
-
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
+        var folders = changedItems.Where(item => item.IsFolder
+                                                 && (folder.ParentFolderLowerPath == null
+                                                     || item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (folders.Count == 0)
         {
             return new WebhookResponse<ListResponse<FolderDto>>
@@ -102,14 +103,13 @@ public class WebhookList : BaseInvocable
         var changedItems = GetChangedItems(payload.Cursor, out var newCursor);
 
         await StoreCursor(payload.Cursor, newCursor);
-
-        var deletedItems = changedItems
-            .Where(item => item.IsDeleted
-                           && (folder.ParentFolderLowerPath == null
-                               || item.PathLower.StartsWith(folder.ParentFolderLowerPath +
-                                                            "/")))
-            .ToList();
         
+        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" 
+            ? string.Empty 
+            : folder.ParentFolderLowerPath ?? string.Empty;
+        var deletedItems = changedItems.Where(item => item.IsDeleted
+                                                      && (folder.ParentFolderLowerPath == null
+                                                          || item.PathLower.StartsWith(parentFolderLowerPath + "/"))).ToList();
         if (deletedItems.Count == 0)
         {
             return new WebhookResponse<ListResponse<DeletedItemDto>>

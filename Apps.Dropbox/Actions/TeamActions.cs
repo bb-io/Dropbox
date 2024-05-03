@@ -10,7 +10,6 @@ using Dropbox.Api.Team;
 
 namespace Apps.Dropbox.Actions;
 
-[ActionList]
 public class TeamActions
 {
     #region List
