@@ -1,4 +1,5 @@
 ﻿using System.Net.Mime;
+using System.Text.RegularExpressions;
 using Apps.Dropbox.Dtos;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication;
@@ -175,9 +176,12 @@ namespace Apps.Dropbox.Actions
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] DownloadFileRequest input)
         {
+            if (!Regex.IsMatch(input.FilePath, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
+                throw new("File path input doesn't match the expected format and seems to be invalid");
+
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var downloadArg = new DownloadArg(input.FilePath);
-            
+
             using var response = await dropboxClient.Files.DownloadAsync(downloadArg);
             var filename = response.Response.AsFile.Name;
             var fileStream = await response.GetContentAsStreamAsync();
