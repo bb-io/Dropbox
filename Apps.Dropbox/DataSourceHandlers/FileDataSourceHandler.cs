@@ -38,6 +38,14 @@ public class FileDataSourceHandler : BaseInvocable, IAsyncDataSourceHandler
                 }
             }
         }
+        
+        var currentAccount = await client.Users.GetCurrentAccountAsync();
+        var accountId = currentAccount.AccountId;
+        
+        await Logger.LogAsync(new
+        {
+            AccountId = accountId,
+        });
 
         return filesDictionary;
     }
