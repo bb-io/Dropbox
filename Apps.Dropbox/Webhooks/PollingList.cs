@@ -10,6 +10,7 @@ using Dropbox.Api.Files;
 
 namespace Apps.Dropbox.Webhooks
 {
+    [PollingEventList]
     public class PollingList : BaseInvocable
     {
         private readonly DropboxClient _dropboxClient;
