@@ -3,12 +3,10 @@ using Apps.Dropbox.Webhooks.Inputs;
 using Apps.Dropbox.Webhooks.Payload;
 using Apps.Dropbox.Webhooks.Polling.Memory;
 using Blackbird.Applications.Sdk.Common;
-using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
 using Dropbox.Api;
 using Dropbox.Api.Files;
-using RestSharp;
 
 namespace Apps.Dropbox.Webhooks
 {
@@ -28,20 +26,13 @@ namespace Apps.Dropbox.Webhooks
             [PollingEventParameter] ParentFolderInput folder
             )
         {
-            RestClient restClient = new RestClient();
-            RestRequest restRequest = new RestRequest("https://webhook.site/174825e2-48fc-42ba-9efe-a3350402ede9", Method.Post);
-            restRequest.AddBody(new
-            {
-                token = InvocationContext.AuthenticationCredentialsProviders.First(p => p.KeyName == "Access token").Value
-            });
-            restClient.Execute(restRequest);
-
+            string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" ? string.Empty : folder.ParentFolderLowerPath ?? string.Empty;
             if (request.Memory == null)
             {
                 return new()
                 {
                     FlyBird = false,
-                    Memory = new CursorMemory() { Cursor = await GetCursor(folder.ParentFolderLowerPath ?? string.Empty) }
+                    Memory = new CursorMemory() { Cursor = await GetCursor(parentFolderLowerPath) }
                 };
             }
             var changedItems = GetChangedItems(request.Memory.Cursor, out var newCursor);
@@ -61,17 +52,18 @@ namespace Apps.Dropbox.Webhooks
         }
 
         [PollingEvent("On file deleted", "On file deleted")]
-        public async Task<PollingEventResponse<CursorMemory, ListResponse<FileDto>>> OnFileDeleted(
+        public async Task<PollingEventResponse<CursorMemory, ListResponse<DeletedItemDto>>> OnFileDeleted(
             PollingEventRequest<CursorMemory> request,
             [PollingEventParameter] ParentFolderInput folder
             )
         {
+            string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" ? string.Empty : folder.ParentFolderLowerPath ?? string.Empty;
             if (request.Memory == null)
             {
                 return new()
                 {
                     FlyBird = false,
-                    Memory = new CursorMemory() { Cursor = await GetCursor(folder.ParentFolderLowerPath ?? string.Empty) }
+                    Memory = new CursorMemory() { Cursor = await GetCursor(parentFolderLowerPath) }
                 };
             }
             var changedItems = GetChangedItems(request.Memory.Cursor, out var newCursor);
@@ -86,7 +78,7 @@ namespace Apps.Dropbox.Webhooks
             {
                 FlyBird = true,
                 Memory = new CursorMemory() { Cursor = newCursor },
-                Result = new ListResponse<FileDto> { Items = deletedFiles.Select(file => new FileDto(file.AsFile)) }
+                Result = new ListResponse<DeletedItemDto> { Items = deletedFiles.Select(file => new DeletedItemDto(file.AsDeleted)) }
             };
         }
 
