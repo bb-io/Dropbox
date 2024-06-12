@@ -35,8 +35,7 @@ namespace Apps.Dropbox.Webhooks
                 };
             }
             var changedItems = GetChangedItems(request.Memory.Cursor, out var newCursor);
-            //string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" ? string.Empty : folder.ParentFolderLowerPath ?? string.Empty;
-            var files = changedItems.Where(item => item.IsFile).ToList(); //&& (folder.ParentFolderLowerPath == null || item.PathLower.StartsWith(parentFolderLowerPath + "/"))
+            var files = changedItems.Where(item => item.IsFile).ToList();
             if(files.Count == 0)
                 return new()
                 {
@@ -48,6 +47,36 @@ namespace Apps.Dropbox.Webhooks
                 FlyBird = true,
                 Memory = new CursorMemory() { Cursor = newCursor },
                 Result = new ListResponse<FileDto> { Items = files.Select(file => new FileDto(file.AsFile)) }
+            };
+        }
+
+        [PollingEvent("On file deleted", "On file deleted")]
+        public async Task<PollingEventResponse<CursorMemory, ListResponse<FileDto>>> OnFileDeleted(
+            PollingEventRequest<CursorMemory> request,
+            [PollingEventParameter] ParentFolderInput folder
+            )
+        {
+            if (request.Memory == null)
+            {
+                return new()
+                {
+                    FlyBird = false,
+                    Memory = new CursorMemory() { Cursor = await GetCursor(folder.ParentFolderLowerPath ?? string.Empty) }
+                };
+            }
+            var changedItems = GetChangedItems(request.Memory.Cursor, out var newCursor);
+            var deletedFiles = changedItems.Where(item => item.IsDeleted).ToList();
+            if (deletedFiles.Count == 0)
+                return new()
+                {
+                    FlyBird = false,
+                    Memory = new CursorMemory() { Cursor = newCursor }
+                };
+            return new()
+            {
+                FlyBird = true,
+                Memory = new CursorMemory() { Cursor = newCursor },
+                Result = new ListResponse<FileDto> { Items = deletedFiles.Select(file => new FileDto(file.AsFile)) }
             };
         }
 
