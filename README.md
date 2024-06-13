@@ -53,7 +53,7 @@ Dropbox is a cloud-based file hosting service that allows users to store, share,
 - **On files created or updated** This polling event is triggered when files are created or updated.
 - **On files deleted** This polling event is triggered when file(s) are deleted.
 ## Examples
-![Connecting](image/README/example_bird.png)
+![Connecting](image/README/example_bird.png)<br>
 This bird fetches new or updated files from Dropbox, translates them with DeepL and then sends them to Slack channel
 ## Feedback
 
