@@ -48,11 +48,10 @@ Dropbox is a cloud-based file hosting service that allows users to store, share,
 - **List namespaces** Lists all team-accessible namespaces.
 - **List sharing allowlist** Lists Approve List entries for given team
 
-## Events
+## Polling events
 
-- **On files created or updated** This webhook is triggered when a file or files are created or updated.
-- **On files or folders deleted** This webhook is triggered when file(s) or folder(s) are deleted.
-- **On folders created or updated** This webhook is triggered when a folder or folders are created or updated.
+- **On files created or updated** This polling event is triggered when files are created or updated.
+- **On file deleted** This polling event is triggered when file(s) are deleted.
 
 ## Feedback
 
