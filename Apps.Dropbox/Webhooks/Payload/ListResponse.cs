@@ -2,5 +2,5 @@
 
 public class ListResponse<T>
 {
-   public IEnumerable<T> Items { get; set; }
+   public IEnumerable<T> Files { get; set; }
 }

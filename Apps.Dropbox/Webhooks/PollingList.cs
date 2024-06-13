@@ -47,11 +47,11 @@ namespace Apps.Dropbox.Webhooks
             {
                 FlyBird = true,
                 Memory = new CursorMemory() { Cursor = newCursor },
-                Result = new ListResponse<FileDto> { Items = files.Select(file => new FileDto(file.AsFile)) }
+                Result = new ListResponse<FileDto> { Files = files.Select(file => new FileDto(file.AsFile)) }
             };
         }
 
-        [PollingEvent("On file deleted", "On file deleted")]
+        [PollingEvent("On files deleted", "On files deleted")]
         public async Task<PollingEventResponse<CursorMemory, ListResponse<DeletedItemDto>>> OnFileDeleted(
             PollingEventRequest<CursorMemory> request,
             [PollingEventParameter] ParentFolderInput folder
@@ -78,7 +78,7 @@ namespace Apps.Dropbox.Webhooks
             {
                 FlyBird = true,
                 Memory = new CursorMemory() { Cursor = newCursor },
-                Result = new ListResponse<DeletedItemDto> { Items = deletedFiles.Select(file => new DeletedItemDto(file.AsDeleted)) }
+                Result = new ListResponse<DeletedItemDto> { Files = deletedFiles.Select(file => new DeletedItemDto(file.AsDeleted)) }
             };
         }
 

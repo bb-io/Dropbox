@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <Product>Dropbox</Product>
     <Description>The cloud storage for files</Description>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <AssemblyName>Apps.Dropbox</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
