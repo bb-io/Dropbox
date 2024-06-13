@@ -51,8 +51,10 @@ Dropbox is a cloud-based file hosting service that allows users to store, share,
 ## Polling events
 
 - **On files created or updated** This polling event is triggered when files are created or updated.
-- **On file deleted** This polling event is triggered when file(s) are deleted.
-
+- **On files deleted** This polling event is triggered when file(s) are deleted.
+## Examples
+![Connecting](image/README/example_bird.png)<br>
+This bird fetches new or updated files from Dropbox, translates them with DeepL and then sends them to Slack channel
 ## Feedback
 
 Do you want to use this app or do you have feedback on our implementation? Reach out to us using the [established channels](https://www.blackbird.io/) or create an issue.
