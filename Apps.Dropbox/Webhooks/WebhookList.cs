@@ -1,14 +1,7 @@
-﻿using System.Net;
-using Apps.Dropbox.Dtos;
-using Apps.Dropbox.Webhooks.Handlers;
-using Apps.Dropbox.Webhooks.Inputs;
-using Apps.Dropbox.Webhooks.Payload;
-using Blackbird.Applications.Sdk.Common;
+﻿using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Webhooks;
 using Dropbox.Api;
-using Dropbox.Api.Files;
-using Newtonsoft.Json;
 
 namespace Apps.Dropbox.Webhooks;
 
