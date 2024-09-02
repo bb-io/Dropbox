@@ -48,11 +48,20 @@ Dropbox is a cloud-based file hosting service that allows users to store, share,
 - **List namespaces** Lists all team-accessible namespaces.
 - **List sharing allowlist** Lists Approve List entries for given team
 
-## Events
+## Polling events
 
-- **On files created or updated** This webhook is triggered when a file or files are created or updated.
-- **On files or folders deleted** This webhook is triggered when file(s) or folder(s) are deleted.
-- **On folders created or updated** This webhook is triggered when a folder or folders are created or updated.
+- **On files created or updated** This polling event is triggered when files are created or updated.
+    - As an optional input, you can specify the parent folder to monitor so that your Birds are only triggered if files are created or updated within that one folder.
+- **On files deleted** This polling event is triggered when file(s) are deleted.
+
+## Examples
+
+![Connecting](image/README/example_bird.png)
+This bird fetches new or updated files from Dropbox, translates them with DeepL and then sends them to Slack channel
+
+## Eggs
+
+Check downloadable workflow prototypes featuring this app that you can import to your Nests [here](https://docs.blackbird.io/eggs/storage-to-mt/). 
 
 ## Feedback
 
