@@ -188,6 +188,13 @@ namespace Apps.Dropbox.Actions
             var file = await _fileManagementClient.UploadAsync(fileStream, MediaTypeNames.Application.Octet, filename);
             return new DownloadFileResponse { File = file };
         }
+        
+        [Action("[DEBUG] Get authentication credentials", Description = "Can be used only in development environment")]
+        public List<AuthenticationCredentialsProvider> GetAuthenticationCredentials(
+            IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
+        {
+            return authenticationCredentialsProviders.ToList();
+        }
 
         [Action("Get link for file download", Description = "Get temporary link for download of a file")]
         public async Task<GetDownloadLinkResponse> GetDownloadLink(
