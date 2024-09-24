@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
 using Blackbird.Applications.Sdk.Common.Invocation;
@@ -59,13 +60,22 @@ public class OAuth2TokenService : BaseInvocable, IOAuth2TokenService
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         using var httpContent = new FormUrlEncodedContent(bodyParameters); 
         using var response = await httpClient.PostAsync(TokenUrl, httpContent, cancellationToken); 
+        var bodyParametersString = string.Join(", ", bodyParameters.Select(p => $"{p.Key}: {p.Value}"));
+        
+        if (!response.IsSuccessStatusCode) 
+        { 
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken); 
+            InvocationContext.Logger?.LogError($"Failed to request token. Status code: {response.StatusCode}; Content: {errorContent}.", new object []{ bodyParameters });
+            throw new InvalidOperationException($"Failed to request token: {errorContent}; Body: {bodyParametersString}"); 
+        }
+        
         var responseContent = await response.Content.ReadAsStringAsync(cancellationToken); 
         var resultDictionary = JsonSerializer.Deserialize<Dictionary<string, object>>(responseContent)?
                                    .ToDictionary(r => r.Key, r => r.Value?.ToString()) 
                                ?? throw new InvalidOperationException($"Invalid response content: {responseContent}");
-        var expiresIn = int.Parse(resultDictionary["expires_in"]);
+        var expiresIn = int.Parse(resultDictionary["expires_in"] ?? throw new InvalidOperationException($"Missing expires_in value. Response: {responseContent}"));
         var expiresAt = utcNow.AddSeconds(expiresIn);
-        resultDictionary.Add(ExpiresAtKeyName, expiresAt.ToString());
+        resultDictionary.Add(ExpiresAtKeyName, expiresAt.ToString(CultureInfo.InvariantCulture));
         return resultDictionary;
     }
 }
