@@ -126,6 +126,10 @@ namespace Apps.Dropbox.Actions
             {
                 throw new PluginMisconfigurationException($"We couldn't move your file: {ex.Message}. Please check the file paths and try again.");
             }
+            catch (Exception ex)
+            {
+                throw new PluginApplicationException($"An unexpected error occurred while moving the file: {ex.Message}.");
+            }
         }
 
         [Action("Copy file", Description = "Copy file from one directory to another")]
@@ -222,6 +226,10 @@ namespace Apps.Dropbox.Actions
             catch (global::Dropbox.Api.ApiException<GetTemporaryLinkError> ex)
             {
                 throw new PluginMisconfigurationException($"Something went wrong while communicating with Dropbox: {ex.Message}. Please double-check your file path and try again.");
+            }
+            catch (Exception ex)
+            {
+                throw new PluginApplicationException($"An unexpected error occurred while moving the file: {ex.Message}.");
             }
         }
     }
