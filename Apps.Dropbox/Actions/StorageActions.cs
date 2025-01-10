@@ -109,16 +109,23 @@ namespace Apps.Dropbox.Actions
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] MoveFileRequest input)
         {
-            var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
-            var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
-            var result = await dropboxClient.Files.MoveV2Async(moveArg);
-
-            return new MoveFileResponse
+            try
             {
-                FileName = result.Metadata.Name,
-                NewFilePath = result.Metadata.PathDisplay
-            };
+                var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+                var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
+                var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
+                var result = await dropboxClient.Files.MoveV2Async(moveArg);
+
+                return new MoveFileResponse
+                {
+                    FileName = result.Metadata.Name,
+                    NewFilePath = result.Metadata.PathDisplay
+                };
+            }
+            catch (global::Dropbox.Api.ApiException<RelocationError> ex)
+            {
+                throw new PluginMisconfigurationException($"We couldn't move your file: {ex.Message}. Please check the file paths and try again.");
+            }
         }
 
         [Action("Copy file", Description = "Copy file from one directory to another")]
@@ -214,7 +221,7 @@ namespace Apps.Dropbox.Actions
             }
             catch (global::Dropbox.Api.ApiException<GetTemporaryLinkError> ex)
             {
-                throw new PluginMisconfigurationException($"Dropbox API error: {ex.Message}");
+                throw new PluginMisconfigurationException($"Something went wrong while communicating with Dropbox: {ex.Message}. Please double-check your file path and try again.");
             }
         }
     }
