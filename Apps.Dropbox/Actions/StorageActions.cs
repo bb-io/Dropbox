@@ -7,11 +7,13 @@ using Apps.Dropbox.Models.Responses;
 using Apps.Dropbox.Models.Requests;
 using Apps.Dropbox.Utils;
 using Dropbox.Api.Files;
+using Dropbox.Api;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Sharing;
 using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
+using Blackbird.Applications.Sdk.Common.Exceptions;
 
 namespace Apps.Dropbox.Actions
 {
@@ -24,14 +26,14 @@ namespace Apps.Dropbox.Actions
         {
             _fileManagementClient = fileManagementClient;
         }
-        
+
         [Action("Get folders list by path", Description = "Get folders list by specified path")]
         public async Task<FoldersResponse> GetFoldersListByPath(
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] FoldersRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            
+
             string path = input.Path == "/" ? String.Empty : input.Path;
             var list = await dropboxClient.Files.ListFolderAsync(path);
             var folders = list.Entries.Where(e => e.IsFolder).Select(f => new FolderDto(f.AsFolder));
@@ -44,7 +46,7 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] FilesRequest input)
         {
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            
+
             string path = input.Path == "/" ? String.Empty : input.Path;
             var list = await dropboxClient.Files.ListFolderAsync(path);
             var files = list.Entries.Where(e => e.IsFile).Select(f => new FileDto(f.AsFile));
@@ -70,16 +72,16 @@ namespace Apps.Dropbox.Actions
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var file = await _fileManagementClient.DownloadAsync(input.File);
             var fileBytes = await file.GetByteData();
-            
+
             using (var stream = new MemoryStream(fileBytes))
             {
                 var response = await dropboxClient.Files.UploadAsync(
-                    $"{input.ParentFolderPath.TrimEnd('/')}/{input.File.Name}", 
+                    $"{input.ParentFolderPath.TrimEnd('/')}/{input.File.Name}",
                     WriteMode.Overwrite.Instance, body: stream);
                 return new FileDto(response);
-            } 
+            }
         }
-        
+
         [Action("Delete file", Description = "Delete specified file")]
         public async Task<DeleteResponse> DeleteFile(
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
@@ -107,16 +109,27 @@ namespace Apps.Dropbox.Actions
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] MoveFileRequest input)
         {
-            var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
-            var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
-            var result = await dropboxClient.Files.MoveV2Async(moveArg);
-    
-            return new MoveFileResponse
+            try
             {
-                FileName = result.Metadata.Name,
-                NewFilePath = result.Metadata.PathDisplay
-            };
+                var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+                var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
+                var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
+                var result = await dropboxClient.Files.MoveV2Async(moveArg);
+
+                return new MoveFileResponse
+                {
+                    FileName = result.Metadata.Name,
+                    NewFilePath = result.Metadata.PathDisplay
+                };
+            }
+            catch (global::Dropbox.Api.ApiException<RelocationError> ex)
+            {
+                throw new PluginMisconfigurationException($"We couldn't move your file: {ex.Message}. Please check the file paths and try again.");
+            }
+            catch (Exception ex)
+            {
+                throw new PluginApplicationException($"An unexpected error occurred while moving the file: {ex.Message}.");
+            }
         }
 
         [Action("Copy file", Description = "Copy file from one directory to another")]
@@ -128,7 +141,7 @@ namespace Apps.Dropbox.Actions
             var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
             var copyArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
             var result = await dropboxClient.Files.CopyV2Async(copyArg);
-    
+
             return new MoveFileResponse
             {
                 FileName = result.Metadata.Name,
@@ -144,7 +157,7 @@ namespace Apps.Dropbox.Actions
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var createFileArg = new CreateFileRequestArgs(input.RequestTitle, input.Destination);
             var result = await dropboxClient.FileRequests.CreateAsync(createFileArg);
-            
+
             return new CreateFileRequestResponse
             {
                 RequestUrl = result.Url,
@@ -160,7 +173,7 @@ namespace Apps.Dropbox.Actions
             var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var shareFolderArg = new ShareFolderArg(input.FolderPath);
             var result = await dropboxClient.Sharing.ShareFolderAsync(shareFolderArg);
-            
+
             return new ShareFolderResponse
             {
                 IsComplete = result.IsComplete,
@@ -197,16 +210,27 @@ namespace Apps.Dropbox.Actions
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] DownloadFileRequest input)
         {
-            var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var getLinkArg = new GetTemporaryLinkArg(input.FilePath);
-            var result = await dropboxClient.Files.GetTemporaryLinkAsync(getLinkArg);
-            
-            return new GetDownloadLinkResponse
+            try
             {
-                LinkForDownload = result.Link,
-                Path = result.Metadata.PathDisplay,
-                SizeInBytes = result.Metadata.Size
-            };
+                var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+                var getLinkArg = new GetTemporaryLinkArg(input.FilePath);
+                var result = await dropboxClient.Files.GetTemporaryLinkAsync(getLinkArg);
+
+                return new GetDownloadLinkResponse
+                {
+                    LinkForDownload = result.Link,
+                    Path = result.Metadata.PathDisplay,
+                    SizeInBytes = result.Metadata.Size
+                };
+            }
+            catch (global::Dropbox.Api.ApiException<GetTemporaryLinkError> ex)
+            {
+                throw new PluginMisconfigurationException($"Something went wrong while communicating with Dropbox: {ex.Message}. Please double-check your file path and try again.");
+            }
+            catch (Exception ex)
+            {
+                throw new PluginApplicationException($"An unexpected error occurred while moving the file: {ex.Message}.");
+            }
         }
     }
-}
+} 
