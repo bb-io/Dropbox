@@ -30,7 +30,8 @@ namespace Apps.Dropbox.Actions
             { "duplicated_or_nested_paths", "There are duplicated/nested paths among Current or Destination path." },
             { "cant_transfer_ownership", "Your move operation would result in an ownership transfer. Check the ownership permision." },
             { "insufficient_quota", "The current user does not have enough space to move or copy the files." },
-            { "internal_error", "Something went wrong on Dropbox's end. Please verify the action succeeded, and if not, try again." }
+            { "internal_error", "Something went wrong on Dropbox's end. Please verify the action succeeded, and if not, try again." },
+            { "to/conflict/file", "A conflict occurred with the file in the destination folder. Please resolve the conflict and try again." }
         };
         public StorageActions(IFileManagementClient fileManagementClient)
         {
