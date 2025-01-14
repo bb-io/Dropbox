@@ -3,7 +3,6 @@ using System.Net;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Dropbox.Api;
 using Polly;
-using Polly.Extensions.Http;
 
 namespace Apps.Dropbox;
 
