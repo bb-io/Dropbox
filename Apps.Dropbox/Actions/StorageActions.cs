@@ -21,7 +21,17 @@ namespace Apps.Dropbox.Actions
     public class StorageActions
     {
         private readonly IFileManagementClient _fileManagementClient;
-
+        private readonly Dictionary<string, string> _dropboxMoveFileErrorMessages = new()
+        {
+            { "cant_copy_shared_folder", "Shared folders can't be copied." },
+            { "cant_nest_shared_folder", "Your move operation would result in nested shared folders. This is not allowed." },
+            { "cant_move_folder_into_itself", "You cannot move a folder into itself." },
+            { "too_many_files", "The operation would involve more than 10,000 files and folders." },
+            { "duplicated_or_nested_paths", "There are duplicated/nested paths among Current or Destination path." },
+            { "cant_transfer_ownership", "Your move operation would result in an ownership transfer. Check the ownership permision." },
+            { "insufficient_quota", "The current user does not have enough space to move or copy the files." },
+            { "internal_error", "Something went wrong on Dropbox's end. Please verify the action succeeded, and if not, try again." }
+        };
         public StorageActions(IFileManagementClient fileManagementClient)
         {
             _fileManagementClient = fileManagementClient;
@@ -124,6 +134,17 @@ namespace Apps.Dropbox.Actions
             }
             catch (global::Dropbox.Api.ApiException<RelocationError> ex)
             {
+                var messageParts = ex.Message?.Split('/') ?? Array.Empty<string>();
+                var errorTag = messageParts
+                                .FirstOrDefault(part => _dropboxMoveFileErrorMessages.ContainsKey(part))
+                                ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(errorTag))
+                {
+                    var userFriendlyMessage = _dropboxMoveFileErrorMessages[errorTag];
+                    throw new PluginMisconfigurationException(
+                        $"We couldn't move your file: {userFriendlyMessage}."
+                    );
+                }
                 throw new PluginMisconfigurationException($"We couldn't move your file: {ex.Message}. Please check the file paths and try again.");
             }
             catch (Exception ex)
@@ -233,4 +254,4 @@ namespace Apps.Dropbox.Actions
             }
         }
     }
-} 
+}
