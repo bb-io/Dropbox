@@ -31,7 +31,8 @@ namespace Apps.Dropbox.Actions
             { "cant_transfer_ownership", "Your move operation would result in an ownership transfer. Check the ownership permision." },
             { "insufficient_quota", "The current user does not have enough space to move or copy the files." },
             { "internal_error", "Something went wrong on Dropbox's end. Please verify the action succeeded, and if not, try again." },
-            { "to/conflict/file", "A conflict occurred with the file in the destination folder. Please resolve the conflict and try again." }
+            { "to/conflict/file", "A conflict occurred with the file in the destination folder. Please resolve the conflict and try again." },
+            { "path/not_found", "There is nothing at the given path." }
         };
         public StorageActions(IFileManagementClient fileManagementClient)
         {
@@ -212,19 +213,44 @@ namespace Apps.Dropbox.Actions
             [ActionParameter] DownloadFileRequest input)
         {
             if (!Regex.IsMatch(input.FilePath, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
-                throw new("File path input doesn't match the expected format and seems to be invalid");
+                throw new PluginMisconfigurationException ("File path input doesn't match the expected format and seems to be invalid");
 
-            var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
-            var downloadArg = new DownloadArg(input.FilePath);
+            try
+            {
+                var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
+                var downloadArg = new DownloadArg(input.FilePath);
 
-            using var response = await dropboxClient.Files.DownloadAsync(downloadArg);
-            var filename = response.Response.AsFile.Name;
-            var fileStream = await response.GetContentAsStreamAsync();
-            var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-            var file = await _fileManagementClient.UploadAsync(memoryStream, MediaTypeNames.Application.Octet, filename);
-            return new DownloadFileResponse { File = file };
+                using var response = await dropboxClient.Files.DownloadAsync(downloadArg);
+                var filename = response.Response.AsFile.Name;
+                var fileStream = await response.GetContentAsStreamAsync();
+                var memoryStream = new MemoryStream();
+                await fileStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+                var file = await _fileManagementClient.UploadAsync(memoryStream, MediaTypeNames.Application.Octet, filename);
+                return new DownloadFileResponse { File = file };
+            }
+            catch (global::Dropbox.Api.ApiException<DownloadError> ex)
+            {
+                var messageParts = ex.Message?.Split('/') ?? Array.Empty<string>();
+
+                var errorTag = messageParts
+                    .FirstOrDefault(part => _dropboxMoveFileErrorMessages.ContainsKey(part))
+                    ?? string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(errorTag))
+                {
+                    var userFriendlyMessage = _dropboxMoveFileErrorMessages[errorTag];
+                    throw new PluginMisconfigurationException($"We couldn't download your file: {userFriendlyMessage}.");
+                }
+                else
+                {
+                    throw new PluginApplicationException($"An unexpected error occurred while moving the file: {ex.Message}.");
+                }
+            }
+            catch(Exception ex)
+            {
+                throw new PluginApplicationException($"An unexpected error occurred while moving the file: {ex.Message}.");
+            }
         }
 
         [Action("Get link for file download", Description = "Get temporary link for download of a file")]
