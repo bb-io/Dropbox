@@ -32,7 +32,7 @@ namespace Apps.Dropbox.Actions
             { "insufficient_quota", "The current user does not have enough space to move or copy the files." },
             { "internal_error", "Something went wrong on Dropbox's end. Please verify the action succeeded, and if not, try again." },
             { "to/conflict/file", "A conflict occurred with the file in the destination folder. Please resolve the conflict and try again." },
-            { "path/not_found/", "There is nothing at the given path." }
+            { "path/not_found/", "There is nothing at the given path" }
         };
         public StorageActions(IFileManagementClient fileManagementClient)
         {
