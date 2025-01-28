@@ -52,6 +52,14 @@ public static class ErrorWrapper
         catch (Exception e)
         {
             string generalErrorMessage = e.Message;
+            foreach (var errorKeyValue in DropboxErrorMessages)
+            {
+                if (generalErrorMessage.Contains(errorKeyValue.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new PluginMisconfigurationException(errorKeyValue.Value);
+                }
+            }
+
             foreach (var errorKeyValue in GeneralErrorMessages)
             {
                 if (generalErrorMessage.Contains(errorKeyValue.Key, StringComparison.OrdinalIgnoreCase))
