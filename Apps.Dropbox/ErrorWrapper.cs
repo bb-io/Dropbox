@@ -51,7 +51,15 @@ public static class ErrorWrapper
         }
         catch (Exception e)
         {
-            throw new PluginApplicationException($"An unexpected error occurred: {e.Message}");
+            string generalErrorMessage = e.Message;
+            foreach (var errorKeyValue in GeneralErrorMessages)
+            {
+                if (generalErrorMessage.Contains(errorKeyValue.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new PluginMisconfigurationException(errorKeyValue.Value);
+                }
+            }
+            throw new PluginApplicationException($"An unexpected error occurred: {generalErrorMessage}");
         }
     }
 
