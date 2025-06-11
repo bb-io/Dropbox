@@ -35,7 +35,9 @@ namespace Apps.Dropbox.Webhooks
                     Memory = new CursorMemory() { Cursor = await GetCursor(parentFolderLowerPath) }
                 };
             }
-            var changedItems = GetChangedItems(request.Memory.Cursor, out var newCursor);
+            string newCursor=null;
+            var changedItems = await ErrorWrapper.WrapError(() =>
+                Task.FromResult(GetChangedItems(request.Memory.Cursor, out newCursor)));
             var files = changedItems.Where(item => item.IsFile).ToList();
             if(files.Count == 0)
                 return new()
