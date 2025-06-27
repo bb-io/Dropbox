@@ -5,6 +5,7 @@ using Apps.Dropbox.Webhooks.Polling.Memory;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
+using Blackbird.Applications.SDK.Blueprints;
 using Dropbox.Api;
 using Dropbox.Api.Files;
 
@@ -20,6 +21,7 @@ namespace Apps.Dropbox.Webhooks
             _dropboxClient = DropboxClientFactory.CreateDropboxClient(invocationContext.AuthenticationCredentialsProviders);
         }
 
+        [BlueprintEventDefinition(BlueprintEvent.FilesCreatedOrUpdated)]
         [PollingEvent("On files created or updated", "On files created or updated")]
         public async Task<PollingEventResponse<CursorMemory, ListResponse<FileDto>>> OnFilesAddedOrUpdated(
             PollingEventRequest<CursorMemory> request,

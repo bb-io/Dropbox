@@ -9,6 +9,7 @@ using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
+using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Dropbox.Api.FileRequests;
 using Dropbox.Api.Files;
@@ -62,6 +63,7 @@ namespace Apps.Dropbox.Actions
             return new FolderDto(result.Metadata.AsFolder);
         }
 
+        [BlueprintActionDefinition(BlueprintAction.UploadFile)]
         [Action("Upload file", Description = "Upload file")]
         public async Task<FileDto> UploadFile(
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
@@ -157,6 +159,7 @@ namespace Apps.Dropbox.Actions
             };
         }
 
+        [BlueprintActionDefinition(BlueprintAction.DownloadFile)]
         [Action("Download file", Description = "Download specified file")]
         public async Task<DownloadFileResponse> DownloadFile(
             IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
