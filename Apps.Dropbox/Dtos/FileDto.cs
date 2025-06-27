@@ -1,9 +1,10 @@
 ﻿using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.SDK.Blueprints.Interfaces.FileStorage;
 using Dropbox.Api.Files;
 
 namespace Apps.Dropbox.Dtos;
 
-public class FileDto : ItemDto
+public class FileDto : ItemDto, IDownloadFileInput
 {
     public FileDto(FileMetadata file) : base(file)
     {
