@@ -8,11 +8,11 @@ public class ItemDto
     public ItemDto(Metadata item)
     {
         Name = item.Name;
-        FullPath = item.PathDisplay;
+        FileId = item.PathDisplay;
     }
     
     public string Name { get; set; }
     
-    [Display("Full path")]
-    public string FullPath { get; set; }
+    [Display("File path")]
+    public string FileId { get; set; }
 }
