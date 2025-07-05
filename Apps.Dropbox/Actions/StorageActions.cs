@@ -75,27 +75,21 @@ namespace Apps.Dropbox.Actions
         }
 
         [Action("Create file request", Description = "Create file request for current user")]
-        public async Task<CreateFileRequestResponse> CreateFileRequest(
-            IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-            [ActionParameter] CreateFileRequestRequest input)
+        public async Task<CreateFileRequestResponse> CreateFileRequest([ActionParameter] CreateFileRequestRequest input)
         {
-            var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var createFileArg = new CreateFileRequestArgs(input.RequestTitle, input.Destination);
-            var result = await ErrorWrapper.WrapError(() => dropboxClient.FileRequests.CreateAsync(createFileArg));
+            var result = await ErrorWrapper.WrapError(() => Client.FileRequests.CreateAsync(createFileArg));
             return new CreateFileRequestResponse { RequestUrl = result.Url, Destination = result.Destination };
         }
 
         [BlueprintActionDefinition(BlueprintAction.DownloadFile)]
         [Action("Download file", Description = "Download specified file")]
-        public async Task<DownloadFileResponse> DownloadFile(
-            IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-            [ActionParameter] DownloadFileRequest input)
+        public async Task<DownloadFileResponse> DownloadFile([ActionParameter] DownloadFileRequest input)
         {
             if (!Regex.IsMatch(input.FileId, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
                 throw new PluginMisconfigurationException("File path input doesn't match the expected format and seems to be invalid");
-            var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var downloadArg = new DownloadArg(input.FileId);
-            using var response = await ErrorWrapper.WrapError(() => dropboxClient.Files.DownloadAsync(downloadArg));
+            using var response = await ErrorWrapper.WrapError(() => Client.Files.DownloadAsync(downloadArg));
             var filename = response.Response.AsFile.Name;
             var fileStream = await response.GetContentAsStreamAsync();
             var memoryStream = new MemoryStream();
@@ -106,13 +100,10 @@ namespace Apps.Dropbox.Actions
         }
 
         [Action("Get link for file download", Description = "Get temporary link for download of a file")]
-        public async Task<GetDownloadLinkResponse> GetDownloadLink(
-            IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
-            [ActionParameter] DownloadFileRequest input)
+        public async Task<GetDownloadLinkResponse> GetDownloadLink([ActionParameter] DownloadFileRequest input)
         {
-            var dropboxClient = DropboxClientFactory.CreateDropboxClient(authenticationCredentialsProviders);
             var getLinkArg = new GetTemporaryLinkArg(input.FileId);
-            var result = await ErrorWrapper.WrapError(() => dropboxClient.Files.GetTemporaryLinkAsync(getLinkArg));
+            var result = await ErrorWrapper.WrapError(() => Client.Files.GetTemporaryLinkAsync(getLinkArg));
             return new GetDownloadLinkResponse{LinkForDownload = result.Link,Path = result.Metadata.PathDisplay,SizeInBytes = result.Metadata.Size};
         }
     }
