@@ -22,13 +22,12 @@ Dropbox is a cloud-based file hosting service that allows users to store, share,
 ### Files
 
 - **Search files** Get files list by specified path
-- **Create file request** Create file request for current user
-- **Copy file** Copy file from one directory to another
-- **Delete file** Delete specified file
-- **Download file** Download specified file
-- **Get link for file download** Get temporary link for download of a file
-- **Move file** Move file from one directory to another
 - **Upload file** Upload file
+- **Download file** Download specified file
+- **Copy file** Copy file from one folder to another
+- **Move file** Move file from one folder to another
+- **Delete file** Delete specified file
+
 
 ### Folders
 
