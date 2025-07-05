@@ -19,38 +19,29 @@ Dropbox is a cloud-based file hosting service that allows users to store, share,
 
 ## Actions
 
-### Storage
+### Files
 
+- **Search files** Get files list by specified path
 - **Create file request** Create file request for current user
 - **Copy file** Copy file from one directory to another
-- **Create folder** Create folder with a given name
 - **Delete file** Delete specified file
-- **Delete folder** Delete specified folder
 - **Download file** Download specified file
-- **Get files list by path** Get files list by specified path
-- **Get folders list by path** Get folders list by specified path
 - **Get link for file download** Get temporary link for download of a file
 - **Move file** Move file from one directory to another
-- **Share folder** Share given folder
 - **Upload file** Upload file
 
-### Team
+### Folders
 
-- **Create group** Creates a new, empty group
-- **Delete group** Deletes a group
-- **Get group info** Retrieves information about a group
-- **Get team info** Retrieves information about a team
-- **List groups** Lists groups on a team
-- **List member devices** Lists all device sessions of a team's member
-- **List member linked apps** Lists all linked applications of the team member
-- **List members devices** Lists all device sessions of a team
-- **List members** Lists members of a team
-- **List namespaces** Lists all team-accessible namespaces.
-- **List sharing allowlist** Lists Approve List entries for given team
+- **Search folders** Get folders list by specified path
+- **Create folder** Create folder with a given name
+- **Delete folder** Delete specified folder
+- **Share folder** Share given folder
 
 ## Polling events
 
-- **On files created or updated** This polling event is triggered when files are created or updated.
+### Files
+
+- **On files updated** This polling event is triggered when files are created or updated.
     - As an optional input, you can specify the parent folder to monitor so that your Birds are only triggered if files are created or updated within that one folder.
 - **On files deleted** This polling event is triggered when file(s) are deleted.
 

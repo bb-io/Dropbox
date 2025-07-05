@@ -11,7 +11,7 @@ using Dropbox.Api.Files;
 
 namespace Apps.Dropbox.Webhooks
 {
-    [PollingEventList]
+    [PollingEventList("Files")]
     public class PollingList : BaseInvocable
     {
         private readonly DropboxClient _dropboxClient;
@@ -22,7 +22,7 @@ namespace Apps.Dropbox.Webhooks
         }
 
         [BlueprintEventDefinition(BlueprintEvent.FilesCreatedOrUpdated)]
-        [PollingEvent("On files created or updated", "On files created or updated")]
+        [PollingEvent("On files updated", "Triggered when files are updated or new files are created")]
         public async Task<PollingEventResponse<CursorMemory, ListResponse<FileDto>>> OnFilesAddedOrUpdated(
             PollingEventRequest<CursorMemory> request,
             [PollingEventParameter] ParentFolderInput folder
@@ -55,7 +55,7 @@ namespace Apps.Dropbox.Webhooks
             };
         }
 
-        [PollingEvent("On files deleted", "On files deleted")]
+        [PollingEvent("On files deleted", "Triggered when files are deleted")]
         public async Task<PollingEventResponse<CursorMemory, ListResponse<DeletedItemDto>>> OnFileDeleted(
             PollingEventRequest<CursorMemory> request,
             [PollingEventParameter] ParentFolderInput folder

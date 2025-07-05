@@ -21,12 +21,6 @@ namespace Apps.Dropbox
             _typesInstances = CreateTypesInstances();
         }
 
-        public string Name
-        {
-            get => "Dropbox";
-            set { }
-        }
-
         public T GetInstance<T>()
         {
             if (!_typesInstances.TryGetValue(typeof(T), out var value))
