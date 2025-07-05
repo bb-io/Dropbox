@@ -11,7 +11,6 @@ namespace Apps.Dropbox.Connections
             {
                 Name = "OAuth",
                 AuthenticationType = ConnectionAuthenticationType.OAuth2,
-                ConnectionUsage = ConnectionUsage.Actions,
                 ConnectionProperties = new List<ConnectionProperty>()
             }
         };
@@ -21,7 +20,6 @@ namespace Apps.Dropbox.Connections
         {
             var accessToken = values.First(v => v.Key == "access_token");
             yield return new AuthenticationCredentialsProvider(
-                AuthenticationCredentialsRequestLocation.None,
                 "Access token",
                 accessToken.Value
             );

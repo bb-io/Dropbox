@@ -6,7 +6,7 @@ namespace Apps.Dropbox.Webhooks.Inputs;
 
 public class ParentFolderInput
 {
-    [Display("Parent folder")]
+    [Display("Folder path")]
     [DataSource(typeof(FolderDataSourceHandler))]
     public string? ParentFolderLowerPath { get; set; }
 }
