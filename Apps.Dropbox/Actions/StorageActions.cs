@@ -1,5 +1,4 @@
-﻿using System.Net.Mime;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Apps.Dropbox.Dtos;
 using Apps.Dropbox.Invocables;
 using Apps.Dropbox.Models.Requests;
@@ -7,14 +6,12 @@ using Apps.Dropbox.Models.Responses;
 using Apps.Dropbox.Utils;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
-using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Files;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
-using Dropbox.Api.FileRequests;
 using Dropbox.Api.Files;
 
 namespace Apps.Dropbox.Actions
@@ -82,26 +79,10 @@ namespace Apps.Dropbox.Actions
         {
             if (!Regex.IsMatch(input.FileId, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
                 throw new PluginMisconfigurationException("File path input doesn't match the expected format and seems to be invalid");
-            //var downloadArg = new DownloadArg(input.FileId);
-            //using var response = await ErrorWrapper.WrapError(() => Client.Files.DownloadAsync(downloadArg));
-            //var filename = response.Response.AsFile.Name;
-            //var fileStream = await response.GetContentAsStreamAsync();
-            //var memoryStream = new MemoryStream();
-            //await fileStream.CopyToAsync(memoryStream);
-            //memoryStream.Position = 0;
 
             var result = await ErrorWrapper.WrapError(() => Client.Files.GetTemporaryLinkAsync(new GetTemporaryLinkArg(input.FileId)));
             var file = new FileReference(new HttpRequestMessage(HttpMethod.Get, result.Link), result.Metadata.Name, MimeTypes.GetMimeType(result.Metadata.Name));
-            //var file = await _fileManagementClient.UploadAsync(memoryStream, MediaTypeNames.Application.Octet, filename);
             return new DownloadFileResponse { File = file };
         }
-
-        //[Action("Get link for file download", Description = "Get temporary link for download of a file")]
-        //public async Task<GetDownloadLinkResponse> GetDownloadLink([ActionParameter] DownloadFileRequest input)
-        //{
-        //    var getLinkArg = new GetTemporaryLinkArg(input.FileId);
-        //    var result = await ErrorWrapper.WrapError(() => Client.Files.GetTemporaryLinkAsync(getLinkArg));
-        //    return new GetDownloadLinkResponse{LinkForDownload = result.Link,Path = result.Metadata.PathDisplay,SizeInBytes = result.Metadata.Size};
-        //}
     }
 }
