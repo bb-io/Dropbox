@@ -50,6 +50,11 @@ namespace Apps.Dropbox.Actions
         [Action("Delete file", Description = "Delete specified file")]
         public async Task<DeleteResponse> DeleteFile([ActionParameter] DeleteFileRequest input)
         {
+            if (string.IsNullOrEmpty(input.FilePath))
+            { 
+                throw new PluginMisconfigurationException("File path cannot be null or empty. Please check your input and try again");
+            }
+
             var deleteArg = new DeleteArg(input.FilePath);
             var result = await ErrorWrapper.WrapError(() => Client.Files.DeleteV2Async(deleteArg));
             return new DeleteResponse { DeletedObjectPath = result.Metadata.PathDisplay };
