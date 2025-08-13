@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.IO.Compression;
+using System.Text.RegularExpressions;
 using Apps.Dropbox.Dtos;
 using Apps.Dropbox.Invocables;
 using Apps.Dropbox.Models.Requests;
@@ -6,6 +7,7 @@ using Apps.Dropbox.Models.Responses;
 using Apps.Dropbox.Utils;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
+using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Files;
 using Blackbird.Applications.Sdk.Common.Invocation;
@@ -13,6 +15,7 @@ using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Dropbox.Api.Files;
+using RestSharp;
 
 namespace Apps.Dropbox.Actions
 {
@@ -88,6 +91,118 @@ namespace Apps.Dropbox.Actions
             var result = await ErrorWrapper.WrapError(() => Client.Files.GetTemporaryLinkAsync(new GetTemporaryLinkArg(input.FileId)));
             var file = new FileReference(new HttpRequestMessage(HttpMethod.Get, result.Link), result.Metadata.Name, MimeTypes.GetMimeType(result.Metadata.Name));
             return new DownloadFileResponse { File = file };
+        }
+
+        [Action("Download all files in folder", Description = "Recursively downloads all files in a folder as a single ZIP")]
+        public async Task<DownloadFilesResponse> DownloadAllFiles([ActionParameter] DownloadFolderRequest input)
+        {
+            if (!Regex.IsMatch(input.FolderPath, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
+                throw new PluginMisconfigurationException("File path input doesn't match the expected format and seems to be invalid");
+
+            var scope = string.IsNullOrWhiteSpace(input.SubfolderScope)
+                ? "none"
+                : input.SubfolderScope.Trim().ToLowerInvariant();
+
+            var files = await GetFilesByScopeAsync(input.FolderPath, scope);
+
+            var result = new List<FileReference>();
+            foreach (var f in files)
+            {
+                var tmp = await ErrorWrapper.WrapError(() =>
+                    Client.Files.GetTemporaryLinkAsync(new GetTemporaryLinkArg(f.Id)));
+
+                var request = new HttpRequestMessage(HttpMethod.Get, tmp.Link);
+                var mime = MimeTypes.GetMimeType(f.Name);
+                result.Add(new FileReference(request, f.Name, mime));
+            }
+
+            return new DownloadFilesResponse { Files = result };
+        }
+
+        [Action("DEBUG: Get auth data", Description = "Can be used only for debugging purposes.")]
+        public List<AuthenticationCredentialsProvider> GetAuthenticationCredentialsProviders()
+        {
+            return InvocationContext.AuthenticationCredentialsProviders.ToList();
+        }
+
+        private async Task<List<FileMetadata>> GetFilesByScopeAsync(string rootPath, string scope)
+        {
+            async Task<List<FileMetadata>> ListFiles(string path, bool recursive)
+            {
+                var arg = new ListFolderArg(
+                    path: path,
+                    recursive: recursive,
+                    includeMediaInfo: false,
+                    includeDeleted: false,
+                    includeHasExplicitSharedMembers: false,
+                    includeMountedFolders: true,
+                    limit: null,
+                    sharedLink: null,
+                    includePropertyGroups: null,
+                    includeNonDownloadableFiles: false
+                );
+
+                var files = new List<FileMetadata>();
+                var page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(arg));
+                files.AddRange(page.Entries.OfType<FileMetadata>());
+
+                while (page.HasMore)
+                {
+                    page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderContinueAsync(page.Cursor));
+                    files.AddRange(page.Entries.OfType<FileMetadata>());
+                }
+
+                return files;
+            }
+
+            switch (scope)
+            {
+                case "none":
+                    return await ListFiles(rootPath, recursive: false);
+
+                case "recursive":
+                    return await ListFiles(rootPath, recursive: true);
+
+                case "immediate":
+                    {
+                        var result = await ListFiles(rootPath, recursive: false);
+
+                        var arg = new ListFolderArg(
+                            path: rootPath,
+                            recursive: false,
+                            includeMediaInfo: false,
+                            includeDeleted: false,
+                            includeHasExplicitSharedMembers: false,
+                            includeMountedFolders: true,
+                            limit: null,
+                            sharedLink: null,
+                            includePropertyGroups: null,
+                            includeNonDownloadableFiles: false
+                        );
+
+                        var folders = new List<FolderMetadata>();
+                        var page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(arg));
+                        folders.AddRange(page.Entries.OfType<FolderMetadata>());
+
+                        while (page.HasMore)
+                        {
+                            page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderContinueAsync(page.Cursor));
+                            folders.AddRange(page.Entries.OfType<FolderMetadata>());
+                        }
+
+                        foreach (var folder in folders)
+                        {
+                            var subPath = folder.Id ?? folder.PathLower ?? folder.PathDisplay;
+                            if (!string.IsNullOrEmpty(subPath))
+                                result.AddRange(await ListFiles(subPath, recursive: false));
+                        }
+
+                        return result;
+                    }
+
+                default:
+                    throw new PluginMisconfigurationException($"Unsupported subfolder scope: {scope}");
+            }
         }
     }
 }

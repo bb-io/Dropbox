@@ -35,6 +35,7 @@ Dropbox is a cloud-based file hosting service that allows users to store, share,
 - **Create folder** Create folder with a given name
 - **Delete folder** Delete specified folder
 - **Share folder** Share given folder
+- **Download all files in folder** Download all files in a specified folder. You can specify the folder path and level of downloading: 'Only this folder', 'This folder + immediate subfolders', 'This folder + all nested subfolders'.
 
 ## Polling events
 
