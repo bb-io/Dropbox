@@ -357,3 +357,4 @@ healthchecksdb
 
 
 Apps.Dropbox/ApplicationConstants.cs
+/Tests.Dropbox/appsettings.json
