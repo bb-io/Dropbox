@@ -64,11 +64,7 @@ public class PollingList : BaseInvocable
         catch (Exception ex)
         {
             InvocationContext.Logger?.LogError($"[Dropbox OnFilesAddedOrUpdated] {ex.Message}", null);
-            return new()
-            {
-                FlyBird = false,
-                Memory = new CursorMemory() { Cursor = null }
-            };
+            throw;
         }
     }
 
