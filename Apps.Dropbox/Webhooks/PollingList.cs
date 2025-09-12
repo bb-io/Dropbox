@@ -28,37 +28,48 @@ public class PollingList : BaseInvocable
         [PollingEventParameter] ParentFolderInput folder
         )
     {
-        InvocationContext.Logger?.LogInformation("[Dropbox OnFilesAddedOrUpdated] Polling started", null);
-
-        string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" ? string.Empty : folder.ParentFolderLowerPath ?? string.Empty;
-        if (request.Memory == null)
+        try
         {
+            string parentFolderLowerPath = folder.ParentFolderLowerPath == "/" ? string.Empty : folder.ParentFolderLowerPath ?? string.Empty;
+            if (request.Memory == null)
+            {
+                return new()
+                {
+                    FlyBird = false,
+                    Memory = new CursorMemory() { Cursor = await GetCursor(parentFolderLowerPath) }
+                };
+            }
+            string newCursor = null;
+            var changedItems = await ErrorWrapper.WrapError(() =>
+                Task.FromResult(GetChangedItems(request.Memory.Cursor, out newCursor)));
+            var files = changedItems.Where(item => item.IsFile).ToList();
+
+            if (files.Count == 0)
+            {
+                InvocationContext.Logger?.LogError("[Dropbox OnFilesAddedOrUpdated] No files received", null);
+                return new()
+                {
+                    FlyBird = false,
+                    Memory = new CursorMemory() { Cursor = newCursor }
+                };
+            }
+            return new()
+            {
+                FlyBird = true,
+                Memory = new CursorMemory() { Cursor = newCursor },
+                Result = new ListResponse<FileDto> { Files = files.Select(file => new FileDto(file.AsFile)) }
+            };
+
+        }
+        catch (Exception ex)
+        {
+            InvocationContext.Logger?.LogError($"[Dropbox OnFilesAddedOrUpdated] {ex.Message}", null);
             return new()
             {
                 FlyBird = false,
-                Memory = new CursorMemory() { Cursor = await GetCursor(parentFolderLowerPath) }
+                Memory = new CursorMemory() { Cursor = null }
             };
         }
-        string newCursor = null;
-        var changedItems = await ErrorWrapper.WrapError(() =>
-            Task.FromResult(GetChangedItems(request.Memory.Cursor, out newCursor)));
-        var files = changedItems.Where(item => item.IsFile).ToList();
-
-        if (files.Count == 0)
-        {
-            InvocationContext.Logger?.LogError("[Dropbox OnFilesAddedOrUpdated] No files received", null);
-            return new()
-            {
-                FlyBird = false,
-                Memory = new CursorMemory() { Cursor = newCursor }
-            };
-        }
-        return new()
-        {
-            FlyBird = true,
-            Memory = new CursorMemory() { Cursor = newCursor },
-            Result = new ListResponse<FileDto> { Files = files.Select(file => new FileDto(file.AsFile)) }
-        };
     }
 
     [PollingEvent("On files deleted", "Triggered when files are deleted")]
