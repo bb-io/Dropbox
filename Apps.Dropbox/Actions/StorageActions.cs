@@ -1,5 +1,4 @@
-﻿using System.IO.Compression;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Apps.Dropbox.Dtos;
 using Apps.Dropbox.Invocables;
 using Apps.Dropbox.Models.Requests;
@@ -15,194 +14,198 @@ using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Dropbox.Api.Files;
-using RestSharp;
 
-namespace Apps.Dropbox.Actions
+namespace Apps.Dropbox.Actions;
+
+[ActionList("Files")]
+public class StorageActions(InvocationContext context, IFileManagementClient _fileManagementClient) : DropboxInvocable(context)
 {
-    [ActionList("Files")]
-    public class StorageActions(InvocationContext context, IFileManagementClient _fileManagementClient) : DropboxInvocable(context)
+    [Action("Search files", Description = "Get files list by specified path")]
+    public async Task<FilesResponse> GetFilesListByPath([ActionParameter] FilesRequest input)
     {
-        [Action("Search files", Description = "Get files list by specified path")]
-        public async Task<FilesResponse> GetFilesListByPath([ActionParameter] FilesRequest input)
+        string path = input.Path == "/" ? string.Empty : input.Path;
+        var list = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(path));
+        var files = list.Entries
+            .OfType<FileMetadata>()
+            .Where(f => 
+                (!input.ModifiedAfter.HasValue || f.ClientModified >= input.ModifiedAfter.Value) &&
+                (!input.ModifiedBefore.HasValue || f.ClientModified <= input.ModifiedBefore.Value)
+            )
+            .Select(f => new FileDto(f));
+        return new FilesResponse { Files = files };
+    }
+
+    [BlueprintActionDefinition(BlueprintAction.UploadFile)]
+    [Action("Upload file", Description = "Upload file")]
+    public async Task<FileDto> UploadFile( [ActionParameter] UploadFileRequest input)
+    {
+        var file = await _fileManagementClient.DownloadAsync(input.File);
+
+        var fileBytes = await file.GetByteData();
+        var parentFolderPath = string.IsNullOrEmpty(input.ParentFolderPath) ? "/" : input.ParentFolderPath;
+        using (var stream = new MemoryStream(fileBytes))
         {
-            string path = input.Path == "/" ? String.Empty : input.Path;
-            var list = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(path));
-            var files = list.Entries.Where(e => e.IsFile).Select(f => new FileDto(f.AsFile));
-            return new FilesResponse { Files = files };
+            var response = await ErrorWrapper.WrapError(
+                () => Client.Files.UploadAsync(
+                    $"{parentFolderPath.TrimEnd('/')}/{input.File.Name}",
+                    WriteMode.Overwrite.Instance, body: stream));
+
+            return new FileDto(response);
+        }
+    }
+
+    [Action("Delete file", Description = "Delete specified file")]
+    public async Task<DeleteResponse> DeleteFile([ActionParameter] DeleteFileRequest input)
+    {
+        if (string.IsNullOrEmpty(input.FilePath))
+        { 
+            throw new PluginMisconfigurationException("File path cannot be null or empty. Please check your input and try again");
         }
 
-        [BlueprintActionDefinition(BlueprintAction.UploadFile)]
-        [Action("Upload file", Description = "Upload file")]
-        public async Task<FileDto> UploadFile( [ActionParameter] UploadFileRequest input)
-        {
-            var file = await _fileManagementClient.DownloadAsync(input.File);
+        var deleteArg = new DeleteArg(input.FilePath);
+        var result = await ErrorWrapper.WrapError(() => Client.Files.DeleteV2Async(deleteArg));
+        return new DeleteResponse { DeletedObjectPath = result.Metadata.PathDisplay };
+    }
 
-            var fileBytes = await file.GetByteData();
-            var parentFolderPath = string.IsNullOrEmpty(input.ParentFolderPath) ? "/" : input.ParentFolderPath;
-            using (var stream = new MemoryStream(fileBytes))
+    [Action("Move file", Description = "Move file from one folder to another")]
+    public async Task<MoveFileResponse> MoveFile([ActionParameter] MoveFileRequest input)
+    {
+        var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
+        var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
+        var result = await ErrorWrapper.WrapError(() => Client.Files.MoveV2Async(moveArg));
+        return new MoveFileResponse { FileName = result.Metadata.Name, NewFilePath = result.Metadata.PathDisplay };
+    }
+
+    [Action("Copy file", Description = "Copy file from one folder to another")]
+    public async Task<MoveFileResponse> CopyFile([ActionParameter] MoveFileRequest input)
+    {
+        var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
+        var copyArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
+        var result = await ErrorWrapper.WrapError(() => Client.Files.CopyV2Async(copyArg));
+        return new MoveFileResponse { FileName = result.Metadata.Name, NewFilePath = result.Metadata.PathDisplay };
+    }
+
+    [BlueprintActionDefinition(BlueprintAction.DownloadFile)]
+    [Action("Download file", Description = "Download specified file")]
+    public async Task<DownloadFileResponse> DownloadFile([ActionParameter] DownloadFileRequest input)
+    {
+        if (!Regex.IsMatch(input.FileId, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
+            throw new PluginMisconfigurationException("File path input doesn't match the expected format and seems to be invalid");
+
+        var result = await ErrorWrapper.WrapError(() => Client.Files.GetTemporaryLinkAsync(new GetTemporaryLinkArg(input.FileId)));
+        var file = new FileReference(new HttpRequestMessage(HttpMethod.Get, result.Link), result.Metadata.Name, MimeTypes.GetMimeType(result.Metadata.Name));
+        return new DownloadFileResponse { File = file };
+    }
+
+    [Action("Download all files in folder", Description = "Recursively downloads all files in a folder as a single ZIP")]
+    public async Task<DownloadFilesResponse> DownloadAllFiles([ActionParameter] DownloadFolderRequest input)
+    {
+        if (!Regex.IsMatch(input.FolderPath, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
+            throw new PluginMisconfigurationException("File path input doesn't match the expected format and seems to be invalid");
+
+        var scope = string.IsNullOrWhiteSpace(input.SubfolderScope)
+            ? "none"
+            : input.SubfolderScope.Trim().ToLowerInvariant();
+
+        var files = await GetFilesByScopeAsync(input.FolderPath, scope);
+
+        var result = new List<FileReference>();
+        foreach (var f in files)
+        {
+            var tmp = await ErrorWrapper.WrapError(() =>
+                Client.Files.GetTemporaryLinkAsync(new GetTemporaryLinkArg(f.Id)));
+
+            var request = new HttpRequestMessage(HttpMethod.Get, tmp.Link);
+            var mime = MimeTypes.GetMimeType(f.Name);
+            result.Add(new FileReference(request, f.Name, mime));
+        }
+
+        return new DownloadFilesResponse { Files = result };
+    }
+
+    [Action("DEBUG: Get auth data", Description = "Can be used only for debugging purposes.")]
+    public List<AuthenticationCredentialsProvider> GetAuthenticationCredentialsProviders()
+    {
+        return InvocationContext.AuthenticationCredentialsProviders.ToList();
+    }
+
+    private async Task<List<FileMetadata>> GetFilesByScopeAsync(string rootPath, string scope)
+    {
+        async Task<List<FileMetadata>> ListFiles(string path, bool recursive)
+        {
+            var arg = new ListFolderArg(
+                path: path,
+                recursive: recursive,
+                includeMediaInfo: false,
+                includeDeleted: false,
+                includeHasExplicitSharedMembers: false,
+                includeMountedFolders: true,
+                limit: null,
+                sharedLink: null,
+                includePropertyGroups: null,
+                includeNonDownloadableFiles: false
+            );
+
+            var files = new List<FileMetadata>();
+            var page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(arg));
+            files.AddRange(page.Entries.OfType<FileMetadata>());
+
+            while (page.HasMore)
             {
-                var response = await ErrorWrapper.WrapError(
-                    () => Client.Files.UploadAsync(
-                        $"{parentFolderPath.TrimEnd('/')}/{input.File.Name}",
-                        WriteMode.Overwrite.Instance, body: stream));
-
-                return new FileDto(response);
-            }
-        }
-
-        [Action("Delete file", Description = "Delete specified file")]
-        public async Task<DeleteResponse> DeleteFile([ActionParameter] DeleteFileRequest input)
-        {
-            if (string.IsNullOrEmpty(input.FilePath))
-            { 
-                throw new PluginMisconfigurationException("File path cannot be null or empty. Please check your input and try again");
-            }
-
-            var deleteArg = new DeleteArg(input.FilePath);
-            var result = await ErrorWrapper.WrapError(() => Client.Files.DeleteV2Async(deleteArg));
-            return new DeleteResponse { DeletedObjectPath = result.Metadata.PathDisplay };
-        }
-
-        [Action("Move file", Description = "Move file from one folder to another")]
-        public async Task<MoveFileResponse> MoveFile([ActionParameter] MoveFileRequest input)
-        {
-            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
-            var moveArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
-            var result = await ErrorWrapper.WrapError(() => Client.Files.MoveV2Async(moveArg));
-            return new MoveFileResponse { FileName = result.Metadata.Name, NewFilePath = result.Metadata.PathDisplay };
-        }
-
-        [Action("Copy file", Description = "Copy file from one folder to another")]
-        public async Task<MoveFileResponse> CopyFile([ActionParameter] MoveFileRequest input)
-        {
-            var filename = FileNameHelper.EnsureCorrectFilename(input.CurrentFilePath, input.TargetFilename);
-            var copyArg = new RelocationArg(input.CurrentFilePath, $"{input.DestinationFolder.TrimEnd('/')}/{filename}");
-            var result = await ErrorWrapper.WrapError(() => Client.Files.CopyV2Async(copyArg));
-            return new MoveFileResponse { FileName = result.Metadata.Name, NewFilePath = result.Metadata.PathDisplay };
-        }
-
-        [BlueprintActionDefinition(BlueprintAction.DownloadFile)]
-        [Action("Download file", Description = "Download specified file")]
-        public async Task<DownloadFileResponse> DownloadFile([ActionParameter] DownloadFileRequest input)
-        {
-            if (!Regex.IsMatch(input.FileId, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
-                throw new PluginMisconfigurationException("File path input doesn't match the expected format and seems to be invalid");
-
-            var result = await ErrorWrapper.WrapError(() => Client.Files.GetTemporaryLinkAsync(new GetTemporaryLinkArg(input.FileId)));
-            var file = new FileReference(new HttpRequestMessage(HttpMethod.Get, result.Link), result.Metadata.Name, MimeTypes.GetMimeType(result.Metadata.Name));
-            return new DownloadFileResponse { File = file };
-        }
-
-        [Action("Download all files in folder", Description = "Recursively downloads all files in a folder as a single ZIP")]
-        public async Task<DownloadFilesResponse> DownloadAllFiles([ActionParameter] DownloadFolderRequest input)
-        {
-            if (!Regex.IsMatch(input.FolderPath, "\\A(?:(/(.|[\\r\\n])*|id:.*)|(rev:[0-9a-f]{9,})|(ns:[0-9]+(/.*)?))\\z"))
-                throw new PluginMisconfigurationException("File path input doesn't match the expected format and seems to be invalid");
-
-            var scope = string.IsNullOrWhiteSpace(input.SubfolderScope)
-                ? "none"
-                : input.SubfolderScope.Trim().ToLowerInvariant();
-
-            var files = await GetFilesByScopeAsync(input.FolderPath, scope);
-
-            var result = new List<FileReference>();
-            foreach (var f in files)
-            {
-                var tmp = await ErrorWrapper.WrapError(() =>
-                    Client.Files.GetTemporaryLinkAsync(new GetTemporaryLinkArg(f.Id)));
-
-                var request = new HttpRequestMessage(HttpMethod.Get, tmp.Link);
-                var mime = MimeTypes.GetMimeType(f.Name);
-                result.Add(new FileReference(request, f.Name, mime));
-            }
-
-            return new DownloadFilesResponse { Files = result };
-        }
-
-        [Action("DEBUG: Get auth data", Description = "Can be used only for debugging purposes.")]
-        public List<AuthenticationCredentialsProvider> GetAuthenticationCredentialsProviders()
-        {
-            return InvocationContext.AuthenticationCredentialsProviders.ToList();
-        }
-
-        private async Task<List<FileMetadata>> GetFilesByScopeAsync(string rootPath, string scope)
-        {
-            async Task<List<FileMetadata>> ListFiles(string path, bool recursive)
-            {
-                var arg = new ListFolderArg(
-                    path: path,
-                    recursive: recursive,
-                    includeMediaInfo: false,
-                    includeDeleted: false,
-                    includeHasExplicitSharedMembers: false,
-                    includeMountedFolders: true,
-                    limit: null,
-                    sharedLink: null,
-                    includePropertyGroups: null,
-                    includeNonDownloadableFiles: false
-                );
-
-                var files = new List<FileMetadata>();
-                var page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(arg));
+                page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderContinueAsync(page.Cursor));
                 files.AddRange(page.Entries.OfType<FileMetadata>());
-
-                while (page.HasMore)
-                {
-                    page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderContinueAsync(page.Cursor));
-                    files.AddRange(page.Entries.OfType<FileMetadata>());
-                }
-
-                return files;
             }
 
-            switch (scope)
-            {
-                case "none":
-                    return await ListFiles(rootPath, recursive: false);
+            return files;
+        }
 
-                case "recursive":
-                    return await ListFiles(rootPath, recursive: true);
+        switch (scope)
+        {
+            case "none":
+                return await ListFiles(rootPath, recursive: false);
 
-                case "immediate":
+            case "recursive":
+                return await ListFiles(rootPath, recursive: true);
+
+            case "immediate":
+                {
+                    var result = await ListFiles(rootPath, recursive: false);
+
+                    var arg = new ListFolderArg(
+                        path: rootPath,
+                        recursive: false,
+                        includeMediaInfo: false,
+                        includeDeleted: false,
+                        includeHasExplicitSharedMembers: false,
+                        includeMountedFolders: true,
+                        limit: null,
+                        sharedLink: null,
+                        includePropertyGroups: null,
+                        includeNonDownloadableFiles: false
+                    );
+
+                    var folders = new List<FolderMetadata>();
+                    var page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(arg));
+                    folders.AddRange(page.Entries.OfType<FolderMetadata>());
+
+                    while (page.HasMore)
                     {
-                        var result = await ListFiles(rootPath, recursive: false);
-
-                        var arg = new ListFolderArg(
-                            path: rootPath,
-                            recursive: false,
-                            includeMediaInfo: false,
-                            includeDeleted: false,
-                            includeHasExplicitSharedMembers: false,
-                            includeMountedFolders: true,
-                            limit: null,
-                            sharedLink: null,
-                            includePropertyGroups: null,
-                            includeNonDownloadableFiles: false
-                        );
-
-                        var folders = new List<FolderMetadata>();
-                        var page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderAsync(arg));
+                        page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderContinueAsync(page.Cursor));
                         folders.AddRange(page.Entries.OfType<FolderMetadata>());
-
-                        while (page.HasMore)
-                        {
-                            page = await ErrorWrapper.WrapError(() => Client.Files.ListFolderContinueAsync(page.Cursor));
-                            folders.AddRange(page.Entries.OfType<FolderMetadata>());
-                        }
-
-                        foreach (var folder in folders)
-                        {
-                            var subPath = folder.Id ?? folder.PathLower ?? folder.PathDisplay;
-                            if (!string.IsNullOrEmpty(subPath))
-                                result.AddRange(await ListFiles(subPath, recursive: false));
-                        }
-
-                        return result;
                     }
 
-                default:
-                    throw new PluginMisconfigurationException($"Unsupported subfolder scope: {scope}");
-            }
+                    foreach (var folder in folders)
+                    {
+                        var subPath = folder.Id ?? folder.PathLower ?? folder.PathDisplay;
+                        if (!string.IsNullOrEmpty(subPath))
+                            result.AddRange(await ListFiles(subPath, recursive: false));
+                    }
+
+                    return result;
+                }
+
+            default:
+                throw new PluginMisconfigurationException($"Unsupported subfolder scope: {scope}");
         }
     }
 }

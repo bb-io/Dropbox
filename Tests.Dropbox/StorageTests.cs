@@ -31,8 +31,12 @@ public class StorageTests : TestBase
     {
         // Arrange
         var action = new StorageActions(InvocationContext, FileManager);
-        string path = "/z86s34d0/export";
-        var request = new FilesRequest { Path = path };
+        string path = "/hshah/export";
+        var request = new FilesRequest 
+        { 
+            Path = path,
+            ModifiedBefore = new DateTime(2025, 9, 11, 14, 0, 0, DateTimeKind.Utc),
+        };
 
         // Act
         var result = await action.GetFilesListByPath(request);
