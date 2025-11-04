@@ -8,7 +8,7 @@ namespace Apps.Dropbox.Models.Requests
     public class DownloadFileRequest : IDownloadFileInput
     {
         [Display("File path")]
-        [DataSource(typeof(FileDataSourceHandler))]
+        [DataSource(typeof(FilePickerDataSourceHandler))]
         public string FileId { get; set; }
     }
 }

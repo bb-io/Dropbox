@@ -7,6 +7,6 @@ namespace Apps.Dropbox.Models.Requests;
 public class DeleteFileRequest
 {
     [Display("File path")]
-    [DataSource(typeof(FilePickerDataSourceHandler))]
+    [DataSource(typeof(FileDataSourceHandler))]
     public string FilePath { get; set; }
 }

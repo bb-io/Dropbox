@@ -7,12 +7,10 @@ using File = Blackbird.Applications.SDK.Extensions.FileManagement.Models.FileDat
 
 namespace Apps.Dropbox.DataSourceHandlers
 {
-    public class FilePickerDataSourceHandler : BaseInvocable, IAsyncFileDataSourceItemHandler
+    public class FilePickerDataSourceHandler(InvocationContext invocationContext) : BaseInvocable(invocationContext), IAsyncFileDataSourceItemHandler
     {
         private const string RootFolderDisplayName = "Dropbox";
         private const string RootId = "root";
-
-        public FilePickerDataSourceHandler(InvocationContext invocationContext) : base(invocationContext){}
 
         public async Task<IEnumerable<FileDataItem>> GetFolderContentAsync(FolderContentDataSourceContext context,CancellationToken cancellationToken)
         {
