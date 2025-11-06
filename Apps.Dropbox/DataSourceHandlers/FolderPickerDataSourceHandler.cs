@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Apps.Dropbox.DataSourceHandlers
 {
-    internal class FolderPickerDataSourceHandler(InvocationContext invocationContext) : DropboxInvocable(invocationContext), IAsyncFileDataSourceItemHandler
+    public class FolderPickerDataSourceHandler(InvocationContext invocationContext) : DropboxInvocable(invocationContext), IAsyncFileDataSourceItemHandler
     {
         private const string RootFolderDisplayName = "My files";
         private const string RootId = "root";
