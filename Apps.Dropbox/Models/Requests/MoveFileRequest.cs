@@ -12,7 +12,7 @@ namespace Apps.Dropbox.Models.Requests
         public string CurrentFilePath { get; set; }
 
         [Display("Destination folder")]
-        [DataSource(typeof(FolderDataSourceHandler))]
+        [FileDataSource(typeof(FolderPickerDataSourceHandler))]
         public string DestinationFolder { get; set; }
 
         [Display("Target filename")]
