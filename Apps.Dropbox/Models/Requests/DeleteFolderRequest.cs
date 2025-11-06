@@ -1,12 +1,13 @@
 ﻿using Apps.Dropbox.DataSourceHandlers;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Dynamic;
+using Blackbird.Applications.SDK.Extensions.FileManagement.Models.FileDataSourceItems;
 
 namespace Apps.Dropbox.Models.Requests;
 
 public class DeleteFolderRequest
 {
     [Display("Folder path")]
-    [DataSource(typeof(FolderDataSourceHandler))]
+    [FileDataSource(typeof(FolderPickerDataSourceHandler))]
     public string FolderPath { get; set; }
 }
