@@ -67,6 +67,28 @@ public class StorageActions(InvocationContext context, IFileManagementClient _fi
         return new DeleteResponse { DeletedObjectPath = result.Metadata.PathDisplay };
     }
 
+    [Action("Get link for file download", Description = "Get a temporary download link for a file")]
+    public async Task<GetDownloadLinkResponse> GetDownloadLink(
+    [ActionParameter] DeleteFileRequest input)
+    {
+        if (string.IsNullOrEmpty(input.FilePath))
+        {
+            throw new PluginMisconfigurationException(
+                "File path cannot be null or empty. Please check your input and try again");
+        }                    
+        var getLinkArg = new GetTemporaryLinkArg(input.FilePath);
+
+        var result = await ErrorWrapper.WrapError(() => Client.Files.GetTemporaryLinkAsync(getLinkArg));
+
+        return new GetDownloadLinkResponse
+        {
+            LinkForDownload = result.Link,
+            Path = result.Metadata.PathDisplay,
+            SizeInBytes = result.Metadata.Size
+        };       
+    }
+
+
     [Action("Move file", Description = "Move file from one folder to another")]
     public async Task<MoveFileResponse> MoveFile([ActionParameter] MoveFileRequest input)
     {
