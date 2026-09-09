@@ -7,18 +7,16 @@ using System.Text.Json;
 
 namespace Apps.Dropbox.Auth.OAuth2;
 
-public class OAuth2TokenService : BaseInvocable, IOAuth2TokenService, ITokenRefreshable
+public class OAuth2TokenService(InvocationContext invocationContext) 
+    : BaseInvocable(invocationContext), IOAuth2TokenService, ITokenRefreshable
 {
     private const string TokenUrl = "https://api.dropbox.com/oauth2/token";
     private const string ExpiresAtKeyName = "expires_at";
 
-    public OAuth2TokenService(InvocationContext invocationContext) : base(invocationContext)
-    {
-    }
-
     public bool IsRefreshToken(Dictionary<string, string> values) 
         => values.TryGetValue(ExpiresAtKeyName, out var expireValue) && DateTime.UtcNow > DateTime.Parse(expireValue);
 
+    // Dropbox's access token expires in 4 hours
     public int? GetRefreshTokenExprireInMinutes(Dictionary<string, string> values)
     {
         if (!values.TryGetValue(ExpiresAtKeyName, out var expireValue))
@@ -29,7 +27,7 @@ public class OAuth2TokenService : BaseInvocable, IOAuth2TokenService, ITokenRefr
 
         var difference = expireDate - DateTime.UtcNow;
 
-        return (int)difference.TotalMinutes - 5;
+        return (int)difference.TotalMinutes - 20;
     }
 
     public async Task<Dictionary<string, string>> RefreshToken(Dictionary<string, string> values, 
@@ -46,8 +44,11 @@ public class OAuth2TokenService : BaseInvocable, IOAuth2TokenService, ITokenRefr
         return await RequestToken(bodyParameters, cancellationToken);
     }
     
-    public async Task<Dictionary<string, string?>> RequestToken(string state, string code, 
-        Dictionary<string, string> values, CancellationToken cancellationToken)
+    public async Task<Dictionary<string, string>> RequestToken(
+        string state, 
+        string code, 
+        Dictionary<string, string> values, 
+        CancellationToken cancellationToken)
     { 
         const string grantType = "authorization_code"; 
         var bodyParameters = new Dictionary<string, string> 
@@ -79,7 +80,7 @@ public class OAuth2TokenService : BaseInvocable, IOAuth2TokenService, ITokenRefr
         if (!response.IsSuccessStatusCode) 
         { 
             var errorContent = await response.Content.ReadAsStringAsync(cancellationToken); 
-            InvocationContext.Logger?.LogError($"Failed to request token. Status code: {response.StatusCode}; Content: {errorContent}.", new object []{ bodyParameters });
+            InvocationContext.Logger?.LogError($"[Dropbox OAuth] Failed to request token. Status code: {response.StatusCode}; Content: {errorContent}.", new object []{ bodyParameters });
             throw new InvalidOperationException($"Failed to request token: {errorContent}; Body: {bodyParametersString}"); 
         }
         
@@ -89,6 +90,13 @@ public class OAuth2TokenService : BaseInvocable, IOAuth2TokenService, ITokenRefr
                                ?? throw new InvalidOperationException($"Invalid response content: {responseContent}");
         var expiresIn = int.Parse(resultDictionary["expires_in"] ?? throw new InvalidOperationException($"Missing expires_in value. Response: {responseContent}"));
         var expiresAt = utcNow.AddSeconds(expiresIn);
+        
+        InvocationContext.Logger?.LogError(
+            $"[Dropbox OAuth] Token request succeeded, grant: {bodyParameters.GetValueOrDefault("grant_type")}. " +
+            $"expires_in: {expiresIn}, expires_at: {expiresAt}, " +
+            $"refresh_token returned: {resultDictionary.ContainsKey("refresh_token")}",
+            []);
+        
         resultDictionary.Add(ExpiresAtKeyName, expiresAt.ToString(CultureInfo.InvariantCulture));
         return resultDictionary;
     }
